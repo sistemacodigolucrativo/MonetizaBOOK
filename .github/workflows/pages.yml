@@ -1,4 +1,4 @@
-name: Validate Static Mini App
+name: Validate and Deploy Static Mini App
 
 on:
   push:
@@ -7,10 +7,12 @@ on:
 
 permissions:
   contents: read
+  pages: write
+  id-token: write
 
 concurrency:
-  group: validate-static-mini-app
-  cancel-in-progress: true
+  group: github-pages
+  cancel-in-progress: false
 
 jobs:
   validate:
@@ -65,3 +67,25 @@ jobs:
           console.log(`Real PDF asset found and validated: ${path.relative(root, pdfPath)} (${pdf.length} bytes)`);
           console.log('Static Mini App validation completed without Base64 PDF reconstruction.');
           NODE
+
+  deploy:
+    needs: validate
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: '.'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
