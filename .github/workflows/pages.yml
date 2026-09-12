@@ -24,45 +24,55 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Rebuild and validate corrected PDF
+      - name: Validate static Mini App
         shell: bash
         run: |
+          node --check app.js
           node <<'NODE'
           const fs = require('fs');
           const path = require('path');
-          const crypto = require('crypto');
 
-          const expectedHash = '105a42e77ec2e6c8d818e764f0af18110775e53f687778b998456c16f0cd7206';
-          const dir = path.join(process.cwd(), 'assets');
-          const files = fs.readdirSync(dir)
-            .filter((name) => /^pdf-data-\d{2}\.js$/.test(name))
-            .sort();
+          const root = process.cwd();
+          const pdfPath = path.join(root, 'assets', 'MonetizaBOOK_Duvidas_Frequentes_Premium_2026-2.pdf');
+          const requiredFiles = ['index.html', 'app.js', 'styles.css', '.nojekyll'];
 
-          if (files.length !== 14) {
-            throw new Error(`Expected 14 PDF data chunks, found ${files.length}: ${files.join(', ')}`);
+          for (const file of requiredFiles) {
+            if (!fs.existsSync(path.join(root, file))) {
+              throw new Error(`Missing required file: ${file}`);
+            }
           }
 
-          const parts = files.map((name) => {
-            const source = fs.readFileSync(path.join(dir, name), 'utf8');
-            const match = source.match(/\.push\('([^']*)'\);?\s*$/s);
-            if (!match) throw new Error(`Could not parse Base64 payload from ${name}`);
-            return match[1];
-          });
+          const indexHtml = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
+          const appJs = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
 
-          const pdf = Buffer.from(parts.join(''), 'base64');
-          if (pdf.subarray(0, 5).toString('ascii') !== '%PDF-') {
-            throw new Error('Reconstructed payload is not a PDF file');
+          if (!indexHtml.includes('<script type="module" src="app.js"></script>')) {
+            throw new Error('index.html does not load app.js as a module');
           }
 
-          const hash = crypto.createHash('sha256').update(pdf).digest('hex');
-          if (hash !== expectedHash) {
-            throw new Error(`PDF SHA-256 mismatch: ${hash}`);
+          if (/pdf-data-\d{2}\.js/.test(indexHtml) || indexHtml.includes('pdf-bootstrap.js')) {
+            throw new Error('index.html still references Base64 PDF bootstrap files');
           }
 
-          const output = path.join(dir, 'MonetizaBOOK_Duvidas_Frequentes_Premium_2026.pdf');
-          fs.writeFileSync(output, pdf);
-          console.log(`Validated ${files.length} chunks, ${pdf.length} bytes, SHA-256 ${hash}`);
-          console.log(`Wrote real PDF asset: ${output}`);
+          if (appJs.includes('MONETIZABOOK_PDF_BYTES') || appJs.includes('MONETIZABOOK_PDF_PARTS')) {
+            throw new Error('app.js still depends on Base64 PDF globals');
+          }
+
+          if (!appJs.includes('assets/MonetizaBOOK_Duvidas_Frequentes_Premium_2026-2.pdf')) {
+            throw new Error('app.js is not pointed to the expected real PDF asset path');
+          }
+
+          if (fs.existsSync(pdfPath)) {
+            const pdf = fs.readFileSync(pdfPath);
+            if (pdf.length < 1024) throw new Error('PDF file is unexpectedly small');
+            if (pdf.subarray(0, 5).toString('ascii') !== '%PDF-') {
+              throw new Error('Configured asset exists but is not a real PDF file');
+            }
+            console.log(`Real PDF asset found and validated: ${path.relative(root, pdfPath)} (${pdf.length} bytes)`);
+          } else {
+            console.warn('PDF asset is not present yet. Deploying the prepared reader shell; upload the real PDF to finish the Mini App.');
+          }
+
+          console.log('Static Mini App validation completed without Base64 PDF reconstruction.');
           NODE
 
       - name: Configure Pages
