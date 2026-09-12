@@ -3,9 +3,9 @@ import * as pdfjsLib from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@6.3.289/legac
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@6.3.289/legacy/build/pdf.worker.mjs';
 
 const EXPECTED_PAGES = 27;
-const sourceBytes = window.MONETIZABOOK_PDF_BYTES;
-if (!sourceBytes) throw new Error('Dados do PDF MonetizaBOOK não foram carregados.');
+const DEFAULT_PDF_URL = 'assets/MonetizaBOOK_Duvidas_Frequentes_Premium_2026-2.pdf';
 
+const reader = document.getElementById('reader');
 const canvas = document.getElementById('pageCanvas');
 const context = canvas.getContext('2d', { alpha: false });
 const shell = document.getElementById('pageShell');
@@ -13,6 +13,8 @@ const viewport = document.getElementById('pageViewport');
 const linkLayer = document.getElementById('linkLayer');
 const loading = document.getElementById('loading');
 const loadError = document.getElementById('loadError');
+const loadErrorTitle = document.getElementById('loadErrorTitle');
+const loadErrorMessage = document.getElementById('loadErrorMessage');
 const currentEl = document.getElementById('pageCurrent');
 const totalEl = document.getElementById('pageTotal');
 const prevButton = document.getElementById('prevButton');
@@ -31,6 +33,9 @@ const pageDialog = document.getElementById('pageDialog');
 const pageForm = document.getElementById('pageForm');
 const pageInput = document.getElementById('pageInput');
 
+const configuredPdfUrl = reader?.dataset.pdfSrc?.trim() || DEFAULT_PDF_URL;
+const pdfFileName = reader?.dataset.pdfFilename?.trim() || configuredPdfUrl.split('/').pop() || 'MonetizaBOOK.pdf';
+
 let pdfDocument = null;
 let totalPages = EXPECTED_PAGES;
 let tocEntries = [];
@@ -43,6 +48,36 @@ const destinationCache = new Map();
 
 totalEl.textContent = String(totalPages);
 pageInput.max = String(totalPages);
+setControlState(false);
+preparePdfLinks(configuredPdfUrl, pdfFileName);
+
+function setControlState(enabled) {
+  [prevButton, nextButton, pageButton, zoomIn, zoomOut, zoomReset, tocButton].forEach((control) => {
+    control.disabled = !enabled;
+  });
+}
+
+function preparePdfLinks(url, filename) {
+  document.querySelectorAll('[data-pdf-download]').forEach((anchor) => {
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.removeAttribute('aria-disabled');
+  });
+
+  document.querySelectorAll('[data-pdf-open]').forEach((anchor) => {
+    anchor.href = url;
+    anchor.target = '_blank';
+    anchor.rel = 'noopener noreferrer';
+    anchor.removeAttribute('aria-disabled');
+  });
+}
+
+function showLoadError(title, message) {
+  loading.hidden = true;
+  loadError.hidden = false;
+  if (loadErrorTitle) loadErrorTitle.textContent = title;
+  if (loadErrorMessage) loadErrorMessage.textContent = message;
+}
 
 function clampPage(value) {
   const n = Number.parseInt(value, 10);
@@ -177,8 +212,7 @@ async function renderPage(page) {
     if (error?.name === 'RenderingCancelledException') return;
     console.error('Falha ao renderizar o PDF:', error);
     if (generation === renderGeneration) {
-      loading.hidden = true;
-      loadError.hidden = false;
+      showLoadError('Falha ao renderizar o PDF.', 'O arquivo foi localizado, mas a página não pôde ser exibida pelo leitor. Abra o PDF diretamente ou valide a integridade do arquivo enviado.');
     }
   }
 }
@@ -307,10 +341,9 @@ window.addEventListener('keydown', (event) => {
 
 async function start() {
   currentEl.textContent = String(currentPage);
-  prevButton.disabled = currentPage === 1;
 
   try {
-    const loadingTask = pdfjsLib.getDocument({ data: sourceBytes.slice() });
+    const loadingTask = pdfjsLib.getDocument({ url: configuredPdfUrl });
     pdfDocument = await loadingTask.promise;
     totalPages = pdfDocument.numPages;
     totalEl.textContent = String(totalPages);
@@ -323,11 +356,14 @@ async function start() {
     currentPage = clampPage(currentPage);
     tocEntries = await buildOutlineEntries();
     renderToc();
+    setControlState(true);
     goToPage(currentPage, false);
   } catch (error) {
     console.error('Falha ao carregar o e-book:', error);
-    loading.hidden = true;
-    loadError.hidden = false;
+    showLoadError(
+      'PDF ainda não disponível no caminho configurado.',
+      `O leitor está pronto, mas precisa encontrar o arquivo real em ${configuredPdfUrl}. Envie o PDF para esse caminho no repositório e aguarde o deploy do GitHub Pages.`
+    );
   }
 }
 
