@@ -3,7 +3,7 @@ import * as pdfjsLib from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@6.3.289/legac
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@6.3.289/legacy/build/pdf.worker.mjs';
 
 const EXPECTED_PAGES = 27;
-const DEFAULT_PDF_URL = 'assets/MonetizaBOOK_Duvidas_Frequentes_Premium_2026-2.pdf';
+const DEFAULT_PDF_URL = 'assets/MonetizaBOOK_Duvidas_Frequentes_Premium_2026.pdf';
 
 const reader = document.getElementById('reader');
 const canvas = document.getElementById('pageCanvas');
@@ -362,7 +362,7 @@ async function start() {
     console.error('Falha ao carregar o e-book:', error);
     showLoadError(
       'PDF ainda não disponível no caminho configurado.',
-      `O leitor está pronto, mas precisa encontrar o arquivo real em ${configuredPdfUrl}. Envie o PDF para esse caminho no repositório e aguarde o deploy do GitHub Pages.`
+      `O leitor está pronto, mas precisa encontrar o arquivo real em ${configuredPdfUrl}. Envie o PDF para esse caminho no repositório e aguarde a publicação do GitHub Pages.`
     );
   }
 }
