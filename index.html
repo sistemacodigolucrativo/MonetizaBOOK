@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0b1730">
   <meta name="robots" content="noindex,nofollow,noarchive">
-  <meta name="description" content="MonetizaBOOK - Dúvidas Frequentes. Leitor oficial do e-book.">
+  <meta name="description" content="MonetizaBOOK - Dúvidas Frequentes. Leitor oficial do e-book em PDF.">
   <title>MonetizaBOOK - Dúvidas Frequentes</title>
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -21,14 +21,21 @@
     </div>
   </header>
 
-  <main id="reader" class="reader" aria-live="polite">
+  <main
+    id="reader"
+    class="reader"
+    aria-live="polite"
+    data-pdf-src=""
+    data-pdf-filename="MonetizaBOOK_Duvidas_Frequentes_Premium_2026-2.pdf"
+  >
     <div id="pageViewport" class="page-viewport">
       <div id="pageShell" class="page-shell">
         <canvas id="pageCanvas" aria-label="Página do e-book MonetizaBOOK"></canvas>
         <div id="linkLayer" class="link-layer" aria-label="Links da página"></div>
-        <div id="loading" class="loading" role="status">Carregando e-book…</div>
+        <div id="loading" class="loading" role="status">Preparando leitor do e-book…</div>
         <div id="loadError" class="load-error" hidden>
-          <strong>Não foi possível carregar o leitor.</strong>
+          <strong id="loadErrorTitle">PDF ainda não configurado.</strong>
+          <p id="loadErrorMessage">Envie o arquivo PDF real para o repositório. Depois disso, esta tela será conectada ao arquivo sem conversão para Base64.</p>
           <a href="#" data-pdf-open aria-disabled="true">Abrir o PDF diretamente</a>
         </div>
       </div>
@@ -84,24 +91,9 @@
   </dialog>
 
   <noscript>
-    <p class="noscript">Este leitor requer JavaScript para reconstruir e exibir o PDF.</p>
+    <p class="noscript">Este leitor requer JavaScript para carregar e exibir o PDF.</p>
   </noscript>
 
-  <script src="assets/pdf-data-01.js"></script>
-  <script src="assets/pdf-data-02.js"></script>
-  <script src="assets/pdf-data-03.js"></script>
-  <script src="assets/pdf-data-04.js"></script>
-  <script src="assets/pdf-data-05.js"></script>
-  <script src="assets/pdf-data-06.js"></script>
-  <script src="assets/pdf-data-07.js"></script>
-  <script src="assets/pdf-data-08.js"></script>
-  <script src="assets/pdf-data-09.js"></script>
-  <script src="assets/pdf-data-10.js"></script>
-  <script src="assets/pdf-data-11.js"></script>
-  <script src="assets/pdf-data-12.js"></script>
-  <script src="assets/pdf-data-13.js"></script>
-  <script src="assets/pdf-data-14.js"></script>
-  <script src="pdf-bootstrap.js"></script>
   <script type="module" src="app.js"></script>
 </body>
 </html>
