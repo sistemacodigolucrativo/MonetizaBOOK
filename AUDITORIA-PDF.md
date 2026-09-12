@@ -10,24 +10,23 @@ A publicação anterior dependia de blocos JavaScript com o conteúdo do PDF cod
 
 O PDF deve ser mantido integralmente como arquivo `.pdf`, sem conversão para Base64, sem compactação e sem divisão em partes.
 
-Caminho definido para upload:
+Caminho final do PDF enviado:
 
-`assets/MonetizaBOOK_Duvidas_Frequentes_Premium_2026-2.pdf`
+`assets/MonetizaBOOK_Duvidas_Frequentes_Premium_2026.pdf`
 
-O Mini App foi preparado para carregar esse arquivo por URL direta via PDF.js. A aplicação preserva a estrutura de leitor web: renderização em canvas, índice pesquisável, navegação por página, zoom, abertura direta do PDF, download e hotspots HTML sobre links reconhecidos nas anotações do PDF.
+O Mini App foi configurado para carregar esse arquivo por URL direta via PDF.js. A aplicação preserva a estrutura de leitor web: renderização em canvas, índice pesquisável, navegação por página, zoom, abertura direta do PDF, download e hotspots HTML sobre links reconhecidos nas anotações do PDF.
 
-## Validação esperada após o upload
+## Validação aplicada
 
-Quando o PDF real estiver no repositório, a validação deve confirmar:
+A validação do repositório deve confirmar:
 
 - o arquivo existe no caminho definido;
 - o arquivo começa com a assinatura `%PDF-`;
-- o PDF possui 27 páginas;
-- o outline/sumário é carregado pelo PDF.js;
-- os links internos e externos aparecem como áreas clicáveis no leitor;
-- o índice do Mini App direciona corretamente para as páginas;
-- o layout funciona em celular, tablet e computador;
-- o workflow do GitHub Pages conclui com sucesso.
+- o `index.html` não referencia mais scripts `pdf-data-*.js` nem `pdf-bootstrap.js`;
+- o `app.js` não depende de globais Base64;
+- o `app.js` aponta para `assets/MonetizaBOOK_Duvidas_Frequentes_Premium_2026.pdf`;
+- o layout mantém leitor, índice, zoom, download e abertura direta;
+- o site permanece estático e compatível com GitHub Pages.
 
 ## Observação
 
