@@ -2,10 +2,8 @@ import * as pdfjsLib from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@6.3.289/legac
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@6.3.289/legacy/build/pdf.worker.mjs';
 
-const data = window.MONETIZABOOK_DATA;
+const EXPECTED_PAGES = 27;
 const sourceBytes = window.MONETIZABOOK_PDF_BYTES;
-
-if (!data) throw new Error('Dados de navegação do MonetizaBOOK não foram carregados.');
 if (!sourceBytes) throw new Error('Dados do PDF MonetizaBOOK não foram carregados.');
 
 const canvas = document.getElementById('pageCanvas');
@@ -34,11 +32,14 @@ const pageForm = document.getElementById('pageForm');
 const pageInput = document.getElementById('pageInput');
 
 let pdfDocument = null;
+let totalPages = EXPECTED_PAGES;
+let tocEntries = [];
 let currentPage = readPageFromHash();
 let zoom = 1;
 let renderGeneration = 0;
 let renderTask = null;
-const totalPages = data.pages;
+let resizeTimer = null;
+const destinationCache = new Map();
 
 totalEl.textContent = String(totalPages);
 pageInput.max = String(totalPages);
@@ -51,7 +52,8 @@ function clampPage(value) {
 
 function readPageFromHash() {
   const match = location.hash.match(/page=(\d+)/i);
-  return clampPage(match ? match[1] : 1);
+  const n = Number.parseInt(match?.[1] || '1', 10);
+  return Math.max(1, Math.min(EXPECTED_PAGES, Number.isFinite(n) ? n : 1));
 }
 
 function targetCssWidth() {
@@ -59,34 +61,78 @@ function targetCssWidth() {
   return Math.min(840, Math.max(280, window.innerWidth - sidePadding)) * zoom;
 }
 
-function renderLinks(page) {
-  linkLayer.replaceChildren();
-  const links = data.meta[String(page)]?.links || [];
+async function resolveDestination(dest) {
+  if (!dest || !pdfDocument) return null;
+  const key = typeof dest === 'string' ? `name:${dest}` : JSON.stringify(dest);
+  if (destinationCache.has(key)) return destinationCache.get(key);
 
-  for (const link of links) {
+  try {
+    const explicit = typeof dest === 'string' ? await pdfDocument.getDestination(dest) : dest;
+    if (!Array.isArray(explicit) || explicit.length === 0) return null;
+    const target = explicit[0];
+    let page = null;
+
+    if (Number.isInteger(target)) {
+      page = target + 1;
+    } else if (target && typeof target === 'object') {
+      page = (await pdfDocument.getPageIndex(target)) + 1;
+    }
+
+    if (page && page >= 1 && page <= totalPages) {
+      destinationCache.set(key, page);
+      return page;
+    }
+  } catch (error) {
+    console.warn('Destino PDF não pôde ser resolvido:', error);
+  }
+
+  destinationCache.set(key, null);
+  return null;
+}
+
+async function renderLinks(pdfPage, baseViewport, generation) {
+  const annotations = await pdfPage.getAnnotations({ intent: 'display' });
+  if (generation !== renderGeneration) return;
+  const fragment = document.createDocumentFragment();
+
+  for (const annotation of annotations) {
+    if (annotation.subtype !== 'Link' || !Array.isArray(annotation.rect)) continue;
+    const externalUrl = annotation.url || annotation.unsafeUrl || null;
+    const internalPage = externalUrl ? null : await resolveDestination(annotation.dest);
+    if (!externalUrl && !internalPage) continue;
+    if (generation !== renderGeneration) return;
+
+    const rect = baseViewport.convertToViewportRectangle(annotation.rect);
+    const left = Math.min(rect[0], rect[2]) / baseViewport.width;
+    const top = Math.min(rect[1], rect[3]) / baseViewport.height;
+    const width = Math.abs(rect[2] - rect[0]) / baseViewport.width;
+    const height = Math.abs(rect[3] - rect[1]) / baseViewport.height;
+
     const anchor = document.createElement('a');
     anchor.className = 'pdf-link';
-    anchor.style.left = `${link.x * 100}%`;
-    anchor.style.top = `${link.y * 100}%`;
-    anchor.style.width = `${link.w * 100}%`;
-    anchor.style.height = `${link.h * 100}%`;
+    anchor.style.left = `${left * 100}%`;
+    anchor.style.top = `${top * 100}%`;
+    anchor.style.width = `${width * 100}%`;
+    anchor.style.height = `${height * 100}%`;
 
-    if (link.page) {
-      anchor.href = `#page=${link.page}`;
-      anchor.setAttribute('aria-label', `Ir para a página ${link.page}`);
+    if (internalPage) {
+      anchor.href = `#page=${internalPage}`;
+      anchor.setAttribute('aria-label', `Ir para a página ${internalPage}`);
       anchor.addEventListener('click', (event) => {
         event.preventDefault();
-        goToPage(link.page, true);
+        goToPage(internalPage, true);
       });
-    } else if (link.uri) {
-      anchor.href = link.uri;
+    } else {
+      anchor.href = externalUrl;
       anchor.target = '_blank';
       anchor.rel = 'noopener noreferrer';
       anchor.setAttribute('aria-label', 'Abrir fonte externa');
     }
 
-    linkLayer.appendChild(anchor);
+    fragment.appendChild(anchor);
   }
+
+  linkLayer.replaceChildren(fragment);
 }
 
 async function renderPage(page) {
@@ -123,7 +169,8 @@ async function renderPage(page) {
     await renderTask.promise;
     if (generation !== renderGeneration) return;
 
-    renderLinks(page);
+    await renderLinks(pdfPage, baseViewport, generation);
+    if (generation !== renderGeneration) return;
     loading.hidden = true;
     renderTask = null;
   } catch (error) {
@@ -158,11 +205,27 @@ function setZoom(next) {
   void renderPage(currentPage);
 }
 
-function buildToc(query = '') {
+async function buildOutlineEntries() {
+  const outline = await pdfDocument.getOutline();
+  const entries = [];
+
+  async function walk(items, level) {
+    for (const item of items || []) {
+      const page = await resolveDestination(item.dest);
+      if (page) entries.push({ level, title: item.title || `Página ${page}`, page });
+      if (item.items?.length) await walk(item.items, level + 1);
+    }
+  }
+
+  await walk(outline || [], 1);
+  return entries;
+}
+
+function renderToc(query = '') {
   const normalized = query.trim().toLocaleLowerCase('pt-BR');
   const fragment = document.createDocumentFragment();
 
-  for (const item of data.toc) {
+  for (const item of tocEntries) {
     if (normalized && !item.title.toLocaleLowerCase('pt-BR').includes(normalized)) continue;
     const button = document.createElement('button');
     button.type = 'button';
@@ -207,7 +270,7 @@ zoomReset.addEventListener('click', () => setZoom(1));
 tocButton.addEventListener('click', openToc);
 tocClose.addEventListener('click', closeToc);
 scrim.addEventListener('click', closeToc);
-tocSearch.addEventListener('input', () => buildToc(tocSearch.value));
+tocSearch.addEventListener('input', () => renderToc(tocSearch.value));
 
 document.querySelectorAll('.toc-shortcuts [data-page]').forEach((button) => {
   button.addEventListener('click', () => {
@@ -232,7 +295,6 @@ pageForm.addEventListener('submit', (event) => {
 });
 
 window.addEventListener('popstate', () => goToPage(readPageFromHash(), false));
-let resizeTimer = null;
 window.addEventListener('resize', () => {
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(() => void renderPage(currentPage), 120);
@@ -244,18 +306,23 @@ window.addEventListener('keydown', (event) => {
 });
 
 async function start() {
-  buildToc();
   currentEl.textContent = String(currentPage);
   prevButton.disabled = currentPage === 1;
-  nextButton.disabled = currentPage === totalPages;
 
   try {
-    const workerBytes = sourceBytes.slice();
-    const loadingTask = pdfjsLib.getDocument({ data: workerBytes });
+    const loadingTask = pdfjsLib.getDocument({ data: sourceBytes.slice() });
     pdfDocument = await loadingTask.promise;
-    if (pdfDocument.numPages !== totalPages) {
-      throw new Error(`PDF com ${pdfDocument.numPages} páginas; esperado: ${totalPages}.`);
+    totalPages = pdfDocument.numPages;
+    totalEl.textContent = String(totalPages);
+    pageInput.max = String(totalPages);
+
+    if (totalPages !== EXPECTED_PAGES) {
+      throw new Error(`PDF com ${totalPages} páginas; esperado: ${EXPECTED_PAGES}.`);
     }
+
+    currentPage = clampPage(currentPage);
+    tocEntries = await buildOutlineEntries();
+    renderToc();
     goToPage(currentPage, false);
   } catch (error) {
     console.error('Falha ao carregar o e-book:', error);
