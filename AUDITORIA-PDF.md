@@ -21,7 +21,7 @@ O Mini App foi configurado para carregar esse arquivo por URL direta via PDF.js.
 - `app.js` aponta para o PDF real enviado.
 - `index.html` usa o nome final do PDF no atributo de download.
 - O workflow foi simplificado para validação estática, sem tentar reconfigurar GitHub Pages por Actions.
-- Arquivos antigos de transporte/empacotamento em JavaScript começaram a ser removidos por não serem mais necessários para a rota final.
+- Arquivos antigos de transporte/empacotamento em JavaScript foram removidos da pasta `assets` por não serem mais necessários para a rota final.
 
 ## Validação esperada
 
