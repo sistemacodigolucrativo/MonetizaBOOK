@@ -5,7 +5,7 @@ Leitor web / Telegram Mini App do e-book **MonetizaBOOK — Dúvidas Frequentes 
 ## Estado desta publicação
 
 - Mini App estático preparado para GitHub Pages.
-- Leitura do e-book por arquivo PDF real em `assets/MonetizaBOOK_Duvidas_Frequentes_Premium_2026-2.pdf`.
+- Leitura do e-book por arquivo PDF real em `assets/MonetizaBOOK_Duvidas_Frequentes_Premium_2026.pdf`.
 - Sem reconstrução do PDF por Base64 no navegador.
 - Renderização das páginas com PDF.js.
 - Navegação por índice pesquisável, seleção de página, zoom, abertura direta e download do PDF.
@@ -16,19 +16,17 @@ Leitor web / Telegram Mini App do e-book **MonetizaBOOK — Dúvidas Frequentes 
 
 ## Arquitetura
 
-O site é estático. O arquivo PDF deve ser enviado integralmente para o repositório como PDF real, sem conversão para Base64 e sem compactação.
+O site é estático. O arquivo PDF foi mantido integralmente no repositório como PDF real, sem conversão para Base64 e sem compactação.
 
-Caminho esperado do PDF:
+Caminho do PDF:
 
-`assets/MonetizaBOOK_Duvidas_Frequentes_Premium_2026-2.pdf`
+`assets/MonetizaBOOK_Duvidas_Frequentes_Premium_2026.pdf`
 
 O PDF.js carrega esse arquivo por URL, renderiza as páginas em canvas e a aplicação controla navegação, zoom, índice lateral e hotspots de links. Não há backend, banco de dados nem bot executando continuamente.
 
-## GitHub Pages
+## Publicação
 
-O workflow `.github/workflows/pages.yml` valida o Mini App estático antes de publicar. Se o PDF real já estiver presente no caminho esperado, o workflow também valida se o arquivo começa com a assinatura `%PDF-`.
-
-URL pública esperada após a ativação do GitHub Pages para este repositório:
+URL pública esperada do GitHub Pages:
 
 `https://sistemacodigolucrativo.github.io/MonetizaBOOK---Material-de-Ajuda/`
 
