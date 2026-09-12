@@ -1,4 +1,4 @@
-name: Deploy GitHub Pages
+name: Validate Static Mini App
 
 on:
   push:
@@ -7,18 +7,13 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
+  group: validate-static-mini-app
   cancel-in-progress: true
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  validate:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -33,8 +28,8 @@ jobs:
           const path = require('path');
 
           const root = process.cwd();
-          const pdfPath = path.join(root, 'assets', 'MonetizaBOOK_Duvidas_Frequentes_Premium_2026-2.pdf');
-          const requiredFiles = ['index.html', 'app.js', 'styles.css', '.nojekyll'];
+          const pdfPath = path.join(root, 'assets', 'MonetizaBOOK_Duvidas_Frequentes_Premium_2026.pdf');
+          const requiredFiles = ['index.html', 'app.js', 'styles.css', '.nojekyll', 'assets/MonetizaBOOK_Duvidas_Frequentes_Premium_2026.pdf'];
 
           for (const file of requiredFiles) {
             if (!fs.existsSync(path.join(root, file))) {
@@ -44,6 +39,7 @@ jobs:
 
           const indexHtml = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
           const appJs = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+          const pdf = fs.readFileSync(pdfPath);
 
           if (!indexHtml.includes('<script type="module" src="app.js"></script>')) {
             throw new Error('index.html does not load app.js as a module');
@@ -57,32 +53,15 @@ jobs:
             throw new Error('app.js still depends on Base64 PDF globals');
           }
 
-          if (!appJs.includes('assets/MonetizaBOOK_Duvidas_Frequentes_Premium_2026-2.pdf')) {
-            throw new Error('app.js is not pointed to the expected real PDF asset path');
+          if (!appJs.includes('assets/MonetizaBOOK_Duvidas_Frequentes_Premium_2026.pdf')) {
+            throw new Error('app.js is not pointed to the uploaded real PDF asset path');
           }
 
-          if (fs.existsSync(pdfPath)) {
-            const pdf = fs.readFileSync(pdfPath);
-            if (pdf.length < 1024) throw new Error('PDF file is unexpectedly small');
-            if (pdf.subarray(0, 5).toString('ascii') !== '%PDF-') {
-              throw new Error('Configured asset exists but is not a real PDF file');
-            }
-            console.log(`Real PDF asset found and validated: ${path.relative(root, pdfPath)} (${pdf.length} bytes)`);
-          } else {
-            console.warn('PDF asset is not present yet. Deploying the prepared reader shell; upload the real PDF to finish the Mini App.');
+          if (pdf.length < 1024) throw new Error('PDF file is unexpectedly small');
+          if (pdf.subarray(0, 5).toString('ascii') !== '%PDF-') {
+            throw new Error('Configured asset exists but is not a real PDF file');
           }
 
+          console.log(`Real PDF asset found and validated: ${path.relative(root, pdfPath)} (${pdf.length} bytes)`);
           console.log('Static Mini App validation completed without Base64 PDF reconstruction.');
           NODE
-
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload static site
-        uses: actions/upload-pages-artifact@v4
-        with:
-          path: .
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
