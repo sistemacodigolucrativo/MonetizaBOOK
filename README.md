@@ -11,11 +11,11 @@ Leitor web / Telegram Mini App do e-book **MonetizaBOOK — Dúvidas Frequentes 
 - Navegação do Mini App reconstruída por hotspots HTML, independente do suporte de links internos do leitor PDF do aparelho.
 - Índice pesquisável, seleção de página, zoom, abertura e download do PDF e layout responsivo.
 - Sem analytics, pixels, contadores públicos ou telemetria adicionada pelo projeto.
-- `noindex`, `nofollow` e `robots.txt` para desencorajar indexação.
+- `noindex`, `nofollow` e `.nojekyll` para manter a publicação estática e desencorajar indexação.
 
 ## Arquitetura
 
-O site é estático. O PDF corrigido é armazenado no repositório em quatro blocos Base64 de texto e reconstruído localmente no navegador. O PDF.js renderiza as páginas e a aplicação controla a navegação interna por uma camada própria de hotspots HTML. Não há backend, banco de dados nem bot executando continuamente.
+O site é estático. O PDF corrigido é armazenado no repositório em **sete blocos Base64 de texto** e reconstruído localmente no navegador. O PDF.js renderiza as páginas e a aplicação controla a navegação interna por uma camada própria de hotspots HTML. Não há backend, banco de dados nem bot executando continuamente.
 
 A codificação Base64 é apenas uma forma de transporte/armazenamento no repositório e não altera o conteúdo do PDF. O SHA-256 da versão corrigida é:
 
@@ -23,9 +23,9 @@ A codificação Base64 é apenas uma forma de transporte/armazenamento no reposi
 
 ## GitHub Pages
 
-O workflow `.github/workflows/pages.yml` publica o site estático via GitHub Actions.
+O workflow `.github/workflows/pages.yml` valida a integridade dos sete blocos contra o SHA-256 esperado antes de publicar o site estático via GitHub Actions.
 
-URL esperada após a ativação do Pages:
+URL pública esperada após a ativação do GitHub Pages para este repositório:
 
 `https://sistemacodigolucrativo.github.io/MonetizaBOOK---Material-de-Ajuda/`
 
