@@ -24,7 +24,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Validate embedded PDF integrity
+      - name: Rebuild and validate corrected PDF
         shell: bash
         run: |
           node <<'NODE'
@@ -38,8 +38,8 @@ jobs:
             .filter((name) => /^pdf-data-\d{2}\.js$/.test(name))
             .sort();
 
-          if (files.length !== 7) {
-            throw new Error(`Expected 7 PDF data chunks, found ${files.length}: ${files.join(', ')}`);
+          if (files.length !== 14) {
+            throw new Error(`Expected 14 PDF data chunks, found ${files.length}: ${files.join(', ')}`);
           }
 
           const parts = files.map((name) => {
@@ -59,7 +59,10 @@ jobs:
             throw new Error(`PDF SHA-256 mismatch: ${hash}`);
           }
 
+          const output = path.join(dir, 'MonetizaBOOK_Duvidas_Frequentes_Premium_2026.pdf');
+          fs.writeFileSync(output, pdf);
           console.log(`Validated ${files.length} chunks, ${pdf.length} bytes, SHA-256 ${hash}`);
+          console.log(`Wrote real PDF asset: ${output}`);
           NODE
 
       - name: Configure Pages
