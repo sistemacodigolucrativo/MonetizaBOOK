@@ -1,0 +1,75 @@
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Validate embedded PDF integrity
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          const crypto = require('crypto');
+
+          const expectedHash = '105a42e77ec2e6c8d818e764f0af18110775e53f687778b998456c16f0cd7206';
+          const dir = path.join(process.cwd(), 'assets');
+          const files = fs.readdirSync(dir)
+            .filter((name) => /^pdf-data-\d{2}\.js$/.test(name))
+            .sort();
+
+          if (files.length !== 7) {
+            throw new Error(`Expected 7 PDF data chunks, found ${files.length}: ${files.join(', ')}`);
+          }
+
+          const parts = files.map((name) => {
+            const source = fs.readFileSync(path.join(dir, name), 'utf8');
+            const match = source.match(/\.push\('([^']*)'\);?\s*$/s);
+            if (!match) throw new Error(`Could not parse Base64 payload from ${name}`);
+            return match[1];
+          });
+
+          const pdf = Buffer.from(parts.join(''), 'base64');
+          if (pdf.subarray(0, 5).toString('ascii') !== '%PDF-') {
+            throw new Error('Reconstructed payload is not a PDF file');
+          }
+
+          const hash = crypto.createHash('sha256').update(pdf).digest('hex');
+          if (hash !== expectedHash) {
+            throw new Error(`PDF SHA-256 mismatch: ${hash}`);
+          }
+
+          console.log(`Validated ${files.length} chunks, ${pdf.length} bytes, SHA-256 ${hash}`);
+          NODE
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload static site
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: .
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
