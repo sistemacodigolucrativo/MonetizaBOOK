@@ -4,23 +4,31 @@ Data: 12/09/2026
 
 ## Problema observado
 
-O PDF original continha 119 anotações de link: 114 navegações internas e 5 URLs externas. Os links internos usavam destinos PDF diretamente no campo `/Dest`. Essa construção é válida no formato PDF, porém houve incompatibilidade prática relatada no leitor móvel utilizado pelo usuário.
+A publicação anterior dependia de blocos JavaScript com o conteúdo do PDF codificado em Base64. O navegador reconstruía o arquivo em memória antes de renderizar o e-book. Essa estratégia aumentava a complexidade, dificultava auditoria e contrariava o requisito atual de manter o e-book como arquivo PDF real no repositório.
 
-## Correção aplicada
+## Decisão técnica atual
 
-Os 114 links internos foram recriados como ações explícitas `/GoTo`, apontando para as páginas correspondentes. Os 5 links externos foram preservados/recriados como ações `/URI`.
+O PDF deve ser mantido integralmente como arquivo `.pdf`, sem conversão para Base64, sem compactação e sem divisão em partes.
 
-## Validação técnica registrada
+Caminho definido para upload:
 
-- 27 páginas.
-- 108 itens no outline/sumário.
-- 119 links após a correção.
-- 114 links internos reconhecidos como `GoTo`.
-- 5 links externos reconhecidos como `URI`.
-- Nenhum destino interno fora do intervalo de páginas.
-- Comparação renderizada antes/depois: 0 de 27 páginas com alteração visual.
-- SHA-256 do PDF corrigido: `105a42e77ec2e6c8d818e764f0af18110775e53f687778b998456c16f0cd7206`.
+`assets/MonetizaBOOK_Duvidas_Frequentes_Premium_2026-2.pdf`
 
-## Mini App
+O Mini App foi preparado para carregar esse arquivo por URL direta via PDF.js. A aplicação preserva a estrutura de leitor web: renderização em canvas, índice pesquisável, navegação por página, zoom, abertura direta do PDF, download e hotspots HTML sobre links reconhecidos nas anotações do PDF.
 
-O Mini App reconstrói o PDF no navegador, renderiza suas páginas com PDF.js e não depende do mecanismo de links internos do visualizador PDF do aparelho. As 119 áreas interativas são reconstruídas como hotspots HTML responsivos sobre a página renderizada.
+## Validação esperada após o upload
+
+Quando o PDF real estiver no repositório, a validação deve confirmar:
+
+- o arquivo existe no caminho definido;
+- o arquivo começa com a assinatura `%PDF-`;
+- o PDF possui 27 páginas;
+- o outline/sumário é carregado pelo PDF.js;
+- os links internos e externos aparecem como áreas clicáveis no leitor;
+- o índice do Mini App direciona corretamente para as páginas;
+- o layout funciona em celular, tablet e computador;
+- o workflow do GitHub Pages conclui com sucesso.
+
+## Observação
+
+Os arquivos antigos de transporte em Base64 deixaram de ser necessários para a rota final. Eles não devem voltar a ser referenciados pelo `index.html` nem pelo `app.js`.
