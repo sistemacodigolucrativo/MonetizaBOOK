@@ -126,48 +126,54 @@ async function resolveDestination(dest) {
 }
 
 async function renderLinks(pdfPage, baseViewport, generation) {
-  const annotations = await pdfPage.getAnnotations({ intent: 'display' });
-  if (generation !== renderGeneration) return;
-  const fragment = document.createDocumentFragment();
-
-  for (const annotation of annotations) {
-    if (annotation.subtype !== 'Link' || !Array.isArray(annotation.rect)) continue;
-    const externalUrl = annotation.url || annotation.unsafeUrl || null;
-    const internalPage = externalUrl ? null : await resolveDestination(annotation.dest);
-    if (!externalUrl && !internalPage) continue;
+  try {
+    const annotations = await pdfPage.getAnnotations({ intent: 'display' });
     if (generation !== renderGeneration) return;
+    const fragment = document.createDocumentFragment();
 
-    const rect = baseViewport.convertToViewportRectangle(annotation.rect);
-    const left = Math.min(rect[0], rect[2]) / baseViewport.width;
-    const top = Math.min(rect[1], rect[3]) / baseViewport.height;
-    const width = Math.abs(rect[2] - rect[0]) / baseViewport.width;
-    const height = Math.abs(rect[3] - rect[1]) / baseViewport.height;
+    for (const annotation of annotations) {
+      if (annotation.subtype !== 'Link' || !Array.isArray(annotation.rect)) continue;
+      const externalUrl = annotation.url || annotation.unsafeUrl || null;
+      const internalPage = externalUrl ? null : await resolveDestination(annotation.dest);
+      if (!externalUrl && !internalPage) continue;
+      if (generation !== renderGeneration) return;
 
-    const anchor = document.createElement('a');
-    anchor.className = 'pdf-link';
-    anchor.style.left = `${left * 100}%`;
-    anchor.style.top = `${top * 100}%`;
-    anchor.style.width = `${width * 100}%`;
-    anchor.style.height = `${height * 100}%`;
+      const rect = baseViewport.convertToViewportRectangle(annotation.rect);
+      const left = Math.min(rect[0], rect[2]) / baseViewport.width;
+      const top = Math.min(rect[1], rect[3]) / baseViewport.height;
+      const width = Math.abs(rect[2] - rect[0]) / baseViewport.width;
+      const height = Math.abs(rect[3] - rect[1]) / baseViewport.height;
 
-    if (internalPage) {
-      anchor.href = `#page=${internalPage}`;
-      anchor.setAttribute('aria-label', `Ir para a página ${internalPage}`);
-      anchor.addEventListener('click', (event) => {
-        event.preventDefault();
-        goToPage(internalPage, true);
-      });
-    } else {
-      anchor.href = externalUrl;
-      anchor.target = '_blank';
-      anchor.rel = 'noopener noreferrer';
-      anchor.setAttribute('aria-label', 'Abrir fonte externa');
+      const anchor = document.createElement('a');
+      anchor.className = 'pdf-link';
+      anchor.style.left = `${left * 100}%`;
+      anchor.style.top = `${top * 100}%`;
+      anchor.style.width = `${width * 100}%`;
+      anchor.style.height = `${height * 100}%`;
+
+      if (internalPage) {
+        anchor.href = `#page=${internalPage}`;
+        anchor.setAttribute('aria-label', `Ir para a página ${internalPage}`);
+        anchor.addEventListener('click', (event) => {
+          event.preventDefault();
+          goToPage(internalPage, true);
+        });
+      } else {
+        anchor.href = externalUrl;
+        anchor.target = '_blank';
+        anchor.rel = 'noopener noreferrer';
+        anchor.setAttribute('aria-label', 'Abrir fonte externa');
+      }
+
+      fragment.appendChild(anchor);
     }
 
-    fragment.appendChild(anchor);
+    linkLayer.replaceChildren(fragment);
+  } catch (error) {
+    if (generation !== renderGeneration) return;
+    console.warn('Camada de links do PDF não pôde ser renderizada; mantendo a página visível:', error);
+    linkLayer.replaceChildren();
   }
-
-  linkLayer.replaceChildren(fragment);
 }
 
 async function renderPage(page) {
@@ -204,15 +210,17 @@ async function renderPage(page) {
     await renderTask.promise;
     if (generation !== renderGeneration) return;
 
-    await renderLinks(pdfPage, baseViewport, generation);
-    if (generation !== renderGeneration) return;
     loading.hidden = true;
     renderTask = null;
+
+    // A camada de links é um aprimoramento. Uma anotação problemática nunca deve
+    // invalidar a página já renderizada do PDF integral.
+    await renderLinks(pdfPage, baseViewport, generation);
   } catch (error) {
     if (error?.name === 'RenderingCancelledException') return;
     console.error('Falha ao renderizar o PDF:', error);
     if (generation === renderGeneration) {
-      showLoadError('Falha ao renderizar o PDF.', 'O arquivo foi localizado, mas a página não pôde ser exibida pelo leitor. Abra o PDF diretamente ou valide a integridade do arquivo enviado.');
+      showLoadError('Falha ao renderizar o PDF.', 'O PDF integral foi carregado, mas esta página não pôde ser desenhada pelo leitor. Use “Abrir o PDF diretamente” como alternativa.');
     }
   }
 }
@@ -339,11 +347,34 @@ window.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') closeToc();
 });
 
+async function loadIntegralPdf(url) {
+  // O arquivo é pequeno (~130 KB). Baixá-lo inteiro antes de iniciar o PDF.js
+  // evita requisições Range/streaming que podem falhar em WebViews móveis.
+  const response = await fetch(url, { cache: 'no-store' });
+  if (!response.ok) {
+    throw new Error(`Falha HTTP ${response.status} ao carregar ${url}.`);
+  }
+
+  const buffer = await response.arrayBuffer();
+  if (buffer.byteLength < 1024) {
+    throw new Error(`PDF recebido é pequeno demais (${buffer.byteLength} bytes).`);
+  }
+
+  const bytes = new Uint8Array(buffer);
+  const signature = String.fromCharCode(...bytes.subarray(0, 5));
+  if (signature !== '%PDF-') {
+    throw new Error('O arquivo recebido não possui assinatura PDF válida.');
+  }
+
+  return bytes;
+}
+
 async function start() {
   currentEl.textContent = String(currentPage);
 
   try {
-    const loadingTask = pdfjsLib.getDocument({ url: configuredPdfUrl });
+    const pdfBytes = await loadIntegralPdf(configuredPdfUrl);
+    const loadingTask = pdfjsLib.getDocument({ data: pdfBytes });
     pdfDocument = await loadingTask.promise;
     totalPages = pdfDocument.numPages;
     totalEl.textContent = String(totalPages);
@@ -354,15 +385,24 @@ async function start() {
     }
 
     currentPage = clampPage(currentPage);
-    tocEntries = await buildOutlineEntries();
-    renderToc();
+
+    // Sumário e destinos são recursos auxiliares; falhas neles não impedem a leitura.
+    try {
+      tocEntries = await buildOutlineEntries();
+      renderToc();
+    } catch (error) {
+      console.warn('Sumário interno do PDF não pôde ser carregado:', error);
+      tocEntries = [];
+      renderToc();
+    }
+
     setControlState(true);
     goToPage(currentPage, false);
   } catch (error) {
     console.error('Falha ao carregar o e-book:', error);
     showLoadError(
-      'PDF ainda não disponível no caminho configurado.',
-      `O leitor está pronto, mas precisa encontrar o arquivo real em ${configuredPdfUrl}. Envie o PDF para esse caminho no repositório e aguarde a publicação do GitHub Pages.`
+      'Não foi possível carregar o PDF integral.',
+      `O leitor tentou baixar o arquivo completo em ${configuredPdfUrl}, mas o carregamento falhou. Use “Abrir o PDF diretamente” ou tente novamente.`
     );
   }
 }
