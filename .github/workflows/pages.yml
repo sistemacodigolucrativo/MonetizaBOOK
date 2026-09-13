@@ -106,6 +106,10 @@ jobs:
         with:
           path: '.'
 
+      - name: Wait for branch Pages deployment to settle
+        shell: bash
+        run: sleep 35
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
