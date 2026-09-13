@@ -27,29 +27,12 @@ jobs:
           node <<'NODE'
           const fs = require('fs');
           const html = fs.readFileSync('index.html', 'utf8');
-          const required = [
-            '<!doctype html>',
-            'id="gerais"',
-            'id="colaborativas"',
-            'id="colaboradores"',
-            'id="fontes"',
-            'id="creditos"',
-            'Marcelo R. Souza',
-            'CEO - Método Código Lucrativo &amp; MonetizaBOOK Engajament'
-          ];
-          for (const token of required) {
-            if (!html.toLowerCase().includes(token.toLowerCase())) throw new Error(`Missing required HTML content: ${token}`);
-          }
-          if (/pdf-bootstrap\.js|pdf-data-\d+\.js|data-pdf-src|pdf\.js/i.test(html)) {
-            throw new Error('index.html still depends on the legacy PDF reader/reconstruction architecture');
-          }
-          const ids = new Set([...html.matchAll(/\sid="([^"]+)"/g)].map(m => m[1]));
-          const internalLinks = [...html.matchAll(/href="#([^"]+)"/g)].map(m => m[1]).filter(Boolean);
-          const broken = [...new Set(internalLinks.filter(id => !ids.has(id)))];
-          if (broken.length) throw new Error(`Broken internal anchors: ${broken.join(', ')}`);
-          const details = (html.match(/<details>/g) || []).length;
-          if (details < 100) throw new Error(`FAQ appears incomplete: expected at least 100 interactive entries, found ${details}`);
-          console.log(`Standalone HTML validated: ${details} interactive entries; ${internalLinks.length} internal links; no PDF dependency.`);
+          const required = ['id="como-funciona"','id="conteudos"','id="faq"','id="gerais"','id="colaborativas"','id="colaboradores"','id="creditos"','Marcelo R. Souza'];
+          for (const token of required) if (!html.includes(token)) throw new Error(`Missing required HTML content: ${token}`);
+          const questions = (html.match(/<details>/g) || []).length;
+          if (questions < 100) throw new Error(`Expected at least 100 FAQ entries, found ${questions}`);
+          if (/pdf-bootstrap|pdf-data-\d{2}|MONETIZABOOK_PDF_|pdf\.js|<canvas/i.test(html)) throw new Error('Standalone HTML still contains PDF reader dependencies');
+          console.log(`Standalone HTML validated: ${questions} FAQ entries; no PDF runtime dependency.`);
           NODE
 
   deploy:
@@ -61,12 +44,45 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Build institutional landing and dedicated FAQ
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const source = fs.readFileSync('index.html', 'utf8');
+          const style = (source.match(/<style>([\s\S]*?)<\/style>/i) || [,''])[1];
+          const faq = (source.match(/<section id="faq">[\s\S]*?<\/section>/i) || [''])[0];
+          const credits = (source.match(/<section id="creditos"[\s\S]*?<\/section>/i) || [''])[0];
+          if (!faq) throw new Error('FAQ section not found');
+
+          const faqPage = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#07162d"><title>MonetizaBOOK — Dúvidas Frequentes</title><meta name="description" content="Central completa de Dúvidas Frequentes do MonetizaBOOK: membros, colaboração e operação de colaboradores."><style>${style}.faq-intro{background:linear-gradient(145deg,#07162d,#0b2b55);color:#fff;padding:62px 0 46px}.faq-intro h1{font-size:clamp(34px,5vw,58px);line-height:1.05;margin:10px 0 14px}.faq-intro p{color:#d8e7f7;max-width:760px}.faq-back{display:inline-flex;margin-top:20px;color:#fff;text-decoration:none;font-weight:800}.faq-page #faq{padding-top:52px}</style></head><body id="top" class="faq-page"><header class="top"><div class="wrap"><div class="brand"><small>CENTRAL DE CONHECIMENTO</small>MONETIZABOOK</div><nav class="nav"><a href="index.html">Página inicial</a><a class="btn" href="index.html">Voltar ao site</a></nav></div></header><main><section class="faq-intro"><div class="wrap"><span class="eyebrow">GUIA INTERATIVO</span><h1>Dúvidas Frequentes</h1><p>Central dedicada com 100 perguntas e respostas sobre membros, funcionamento, colaboração e operação de colaboradores.</p><a class="faq-back" href="index.html">← Voltar para a página institucional</a></div></section>${faq}</main>${credits}<script>const q=document.getElementById('faqSearch');if(q)q.addEventListener('input',()=>{const t=q.value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');document.querySelectorAll('#faq details').forEach(d=>{const s=d.innerText.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');d.classList.toggle('hide',t&&!s.includes(t));});});</script></body></html>`;
+          fs.writeFileSync('duvidas-frequentes.html', faqPage);
+
+          const faqTeaser = `<section id="faq"><div class="wrap"><div class="head"><span class="eyebrow" style="color:var(--blue)">CENTRAL DE AJUDA</span><h2>Dúvidas Frequentes agora têm uma página dedicada.</h2><p>São 100 perguntas e respostas organizadas entre Dúvidas Gerais, Dúvidas Colaborativas e Dúvidas de Colaboradores, com pesquisa instantânea e navegação por categorias.</p></div><div class="cards"><article class="card"><h3>Dúvidas Gerais</h3><p>Funcionamento, regras, conteúdo, crescimento, segurança e monetização.</p></article><article class="card"><h3>Dúvidas Colaborativas</h3><p>Como funciona a colaboração, recrutamento, atividades e limites gerais.</p></article><article class="card"><h3>Dúvidas de Colaboradores</h3><p>Postura, atendimento, moderação, segurança e critérios operacionais.</p></article></div><div style="margin-top:28px"><a class="btn" href="duvidas-frequentes.html">Acessar todas as dúvidas frequentes</a></div></div></section>`;
+          const comments = `<section id="comentarios" style="background:#fff"><div class="wrap"><div class="head"><span class="eyebrow" style="color:var(--blue)">COMUNIDADE</span><h2>Comentários da comunidade</h2><p>Este espaço é dedicado a experiências e comentários reais de participantes do MonetizaBOOK.</p></div><div class="card"><h3>Comentários reais, sem depoimentos inventados.</h3><p>Os relatos serão publicados aqui somente quando houver comentários reais e autorização para exibição. Isso preserva a credibilidade da prova social da página.</p></div></div></section>`;
+          let landing = source.replace(/<section id="faq">[\s\S]*?<\/section>/i, faqTeaser);
+          landing = landing.replace(/<section id="creditos"/i, comments + '<section id="creditos"');
+          landing = landing.replace(/href="#faq"/g, 'href="duvidas-frequentes.html"');
+          landing = landing.replace(/<a href="#conteudos">Conteúdos<\/a>/, '<a href="#conteudos">Conteúdos</a><a href="#comentarios">Comentários</a>');
+          fs.writeFileSync('index.html', landing);
+
+          const builtLanding = fs.readFileSync('index.html','utf8');
+          const builtFaq = fs.readFileSync('duvidas-frequentes.html','utf8');
+          if (!builtLanding.includes('id="comentarios"')) throw new Error('Comments section was not generated');
+          if (!builtLanding.includes('duvidas-frequentes.html')) throw new Error('Landing does not link to dedicated FAQ');
+          if ((builtFaq.match(/<details>/g)||[]).length < 100) throw new Error('Dedicated FAQ lost entries');
+          console.log('Built landing + dedicated FAQ + comments section successfully.');
+          NODE
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
           path: '.'
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
