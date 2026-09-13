@@ -21,51 +21,35 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Validate static Mini App
+      - name: Validate standalone HTML Mini App
         shell: bash
         run: |
-          node --check app.js
           node <<'NODE'
           const fs = require('fs');
-          const path = require('path');
-
-          const root = process.cwd();
-          const pdfPath = path.join(root, 'assets', 'MonetizaBOOK_Duvidas_Frequentes_Premium_2026.pdf');
-          const requiredFiles = ['index.html', 'app.js', 'styles.css', '.nojekyll', 'assets/MonetizaBOOK_Duvidas_Frequentes_Premium_2026.pdf'];
-
-          for (const file of requiredFiles) {
-            if (!fs.existsSync(path.join(root, file))) {
-              throw new Error(`Missing required file: ${file}`);
-            }
+          const html = fs.readFileSync('index.html', 'utf8');
+          const required = [
+            '<!doctype html>',
+            'id="gerais"',
+            'id="colaborativas"',
+            'id="colaboradores"',
+            'id="fontes"',
+            'id="creditos"',
+            'Marcelo R. Souza',
+            'CEO - Método Código Lucrativo &amp; MonetizaBOOK Engajament'
+          ];
+          for (const token of required) {
+            if (!html.toLowerCase().includes(token.toLowerCase())) throw new Error(`Missing required HTML content: ${token}`);
           }
-
-          const indexHtml = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-          const appJs = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
-          const pdf = fs.readFileSync(pdfPath);
-
-          if (!indexHtml.includes('<script type="module" src="app.js"></script>')) {
-            throw new Error('index.html does not load app.js as a module');
+          if (/pdf-bootstrap\.js|pdf-data-\d+\.js|data-pdf-src|pdf\.js/i.test(html)) {
+            throw new Error('index.html still depends on the legacy PDF reader/reconstruction architecture');
           }
-
-          if (/pdf-data-\d{2}\.js/.test(indexHtml) || indexHtml.includes('pdf-bootstrap.js')) {
-            throw new Error('index.html still references Base64 PDF bootstrap files');
-          }
-
-          if (appJs.includes('MONETIZABOOK_PDF_BYTES') || appJs.includes('MONETIZABOOK_PDF_PARTS')) {
-            throw new Error('app.js still depends on Base64 PDF globals');
-          }
-
-          if (!appJs.includes('assets/MonetizaBOOK_Duvidas_Frequentes_Premium_2026.pdf')) {
-            throw new Error('app.js is not pointed to the uploaded real PDF asset path');
-          }
-
-          if (pdf.length < 1024) throw new Error('PDF file is unexpectedly small');
-          if (pdf.subarray(0, 5).toString('ascii') !== '%PDF-') {
-            throw new Error('Configured asset exists but is not a real PDF file');
-          }
-
-          console.log(`Real PDF asset found and validated: ${path.relative(root, pdfPath)} (${pdf.length} bytes)`);
-          console.log('Static Mini App validation completed without Base64 PDF reconstruction.');
+          const ids = new Set([...html.matchAll(/\sid="([^"]+)"/g)].map(m => m[1]));
+          const internalLinks = [...html.matchAll(/href="#([^"]+)"/g)].map(m => m[1]).filter(Boolean);
+          const broken = [...new Set(internalLinks.filter(id => !ids.has(id)))];
+          if (broken.length) throw new Error(`Broken internal anchors: ${broken.join(', ')}`);
+          const details = (html.match(/<details>/g) || []).length;
+          if (details < 100) throw new Error(`FAQ appears incomplete: expected at least 100 interactive entries, found ${details}`);
+          console.log(`Standalone HTML validated: ${details} interactive entries; ${internalLinks.length} internal links; no PDF dependency.`);
           NODE
 
   deploy:
@@ -77,15 +61,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-
       - name: Setup Pages
         uses: actions/configure-pages@v5
-
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
           path: '.'
-
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
