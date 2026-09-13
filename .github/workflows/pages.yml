@@ -52,19 +52,37 @@ jobs:
           const fs = require('fs');
           const source = fs.readFileSync('index.html', 'utf8');
           const style = (source.match(/<style>([\s\S]*?)<\/style>/i) || [,''])[1];
-          const faqStart = source.indexOf('<section id="faq">');
-          const creditsStart = source.indexOf('<section id="creditos"');
-          if (faqStart < 0 || creditsStart < 0 || creditsStart <= faqStart) throw new Error('FAQ or credits boundary not found');
-          const faq = source.slice(faqStart, creditsStart);
-          const credits = source.slice(creditsStart, source.indexOf('<script>', creditsStart) > 0 ? source.indexOf('<script>', creditsStart) : source.indexOf('</body>', creditsStart));
+
+          const faqStart = source.search(/<section\b[^>]*\bid=["']faq["'][^>]*>/i);
+          const creditsStart = source.search(/<section\b[^>]*\bid=["']creditos["'][^>]*>/i);
+          if (faqStart < 0 || creditsStart < 0 || creditsStart <= faqStart) throw new Error(`FAQ or credits boundary not found: faq=${faqStart}, credits=${creditsStart}`);
+
+          let faq = source.slice(faqStart, creditsStart);
+          faq = faq.replace(/<details>\s*<summary>Adobe Acrobat[\s\S]*?<\/details>/i, '');
+
+          const afterCredits = source.slice(creditsStart);
+          const creditsMatch = afterCredits.match(/^<section\b[^>]*\bid=["']creditos["'][^>]*>[\s\S]*?<\/section>/i);
+          const credits = creditsMatch ? creditsMatch[0] : '';
+          if (!credits) throw new Error('Credits section could not be extracted');
 
           const faqPage = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#07162d"><title>MonetizaBOOK — Dúvidas Frequentes</title><meta name="description" content="Central completa de Dúvidas Frequentes do MonetizaBOOK: membros, colaboração e operação de colaboradores."><style>${style}.faq-intro{background:linear-gradient(145deg,#07162d,#0b2b55);color:#fff;padding:62px 0 46px}.faq-intro h1{font-size:clamp(34px,5vw,58px);line-height:1.05;margin:10px 0 14px}.faq-intro p{color:#d8e7f7;max-width:760px}.faq-back{display:inline-flex;margin-top:20px;color:#fff;text-decoration:none;font-weight:800}.faq-page #faq{padding-top:52px}</style></head><body id="top" class="faq-page"><header class="top"><div class="wrap"><div class="brand"><small>CENTRAL DE CONHECIMENTO</small>MONETIZABOOK</div><nav class="nav"><a href="index.html">Página inicial</a><a class="btn" href="index.html">Voltar ao site</a></nav></div></header><main><section class="faq-intro"><div class="wrap"><span class="eyebrow">GUIA INTERATIVO</span><h1>Dúvidas Frequentes</h1><p>Central dedicada com 100 perguntas e respostas sobre membros, funcionamento, colaboração e operação de colaboradores.</p><a class="faq-back" href="index.html">← Voltar para a página institucional</a></div></section>${faq}</main>${credits}<script>const q=document.getElementById('faqSearch');if(q)q.addEventListener('input',()=>{const t=q.value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');document.querySelectorAll('#faq details').forEach(d=>{const s=d.innerText.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');d.classList.toggle('hide',t&&!s.includes(t));});});</script></body></html>`;
           fs.writeFileSync('duvidas-frequentes.html', faqPage);
 
           const faqTeaser = `<section id="faq"><div class="wrap"><div class="head"><span class="eyebrow" style="color:var(--blue)">CENTRAL DE AJUDA</span><h2>Dúvidas Frequentes agora têm uma página dedicada.</h2><p>São 100 perguntas e respostas organizadas entre Dúvidas Gerais, Dúvidas Colaborativas e Dúvidas de Colaboradores, com pesquisa instantânea e navegação por categorias.</p></div><div class="cards"><article class="card"><h3>Dúvidas Gerais</h3><p>Funcionamento, regras, conteúdo, crescimento, segurança e monetização.</p></article><article class="card"><h3>Dúvidas Colaborativas</h3><p>Como funciona a colaboração, recrutamento, atividades e limites gerais.</p></article><article class="card"><h3>Dúvidas de Colaboradores</h3><p>Postura, atendimento, moderação, segurança e critérios operacionais.</p></article></div><div style="margin-top:28px"><a class="btn" href="duvidas-frequentes.html">Acessar todas as dúvidas frequentes</a></div></div></section>`;
+
           const comments = `<section id="comentarios" style="background:#fff"><div class="wrap"><div class="head"><span class="eyebrow" style="color:var(--blue)">COMUNIDADE</span><h2>Comentários da comunidade</h2><p>Área em desenvolvimento para testes visuais de comentários, avaliações e prova social do MonetizaBOOK.</p></div><div class="cards"><article class="card"><h3>Comentário de teste</h3><p>Espaço visual reservado para validar hierarquia, legibilidade e comportamento responsivo dos comentários.</p></article><article class="card"><h3>Avaliação de teste</h3><p>Conteúdo demonstrativo de DEV. Será substituído por comentários reais antes da publicação definitiva.</p></article><article class="card"><h3>Experiência de teste</h3><p>Card temporário para avaliar o layout da seção em celular, tablet e desktop.</p></article></div></div></section>`;
 
+          const communityProof = `<section class="community-proof"><div class="wrap"><div class="community-proof-card"><div><span class="eyebrow">COMUNIDADE EM EXPANSÃO</span><h2>Estamos inaugurando o 9º grupo do MonetizaBOOK.</h2><p>A rede já reúne mais de oito grandes grupos no Telegram lotados, conectando uma comunidade em crescimento contínuo em torno de conteúdo, engajamento e desenvolvimento no Facebook.</p></div><div class="community-proof-badge"><strong>9º</strong><span>grupo em inauguração</span></div></div></div></section>`;
+
           let landing = source.slice(0, faqStart) + faqTeaser + comments + source.slice(creditsStart);
+
+          const metricsStart = landing.search(/<div\b[^>]*class=["'][^"']*\bmetrics\b[^"']*["'][^>]*>/i);
+          const howStart = landing.search(/<section\b[^>]*\bid=["']como-funciona["'][^>]*>/i);
+          if (metricsStart < 0 || howStart < 0 || howStart <= metricsStart) throw new Error(`Metrics or how-it-works boundary not found: metrics=${metricsStart}, how=${howStart}`);
+          landing = landing.slice(0, metricsStart) + communityProof + landing.slice(howStart);
+
+          const premiumCss = `.community-proof{padding:0 0 20px;margin-top:-30px;position:relative}.community-proof-card{display:grid;grid-template-columns:1fr auto;gap:32px;align-items:center;background:linear-gradient(135deg,#fff,#f6faff);border:1px solid var(--line);border-radius:26px;padding:30px 34px;box-shadow:var(--shadow)}.community-proof-card h2{margin:7px 0 8px;font-size:clamp(26px,3.5vw,42px);line-height:1.08;letter-spacing:-.03em}.community-proof-card p{margin:0;color:var(--muted);max-width:780px}.community-proof-badge{min-width:170px;text-align:center;padding:22px;border-radius:20px;background:var(--navy);color:#fff}.community-proof-badge strong{display:block;font-size:46px;line-height:1;color:#7ed1ff}.community-proof-badge span{display:block;margin-top:8px;font-size:13px;color:#d8e7f7}@media(max-width:700px){.community-proof{margin-top:-18px}.community-proof-card{grid-template-columns:1fr;padding:24px}.community-proof-badge{min-width:0;text-align:left;display:flex;align-items:center;gap:14px}.community-proof-badge strong{font-size:38px}.community-proof-badge span{margin:0}}`;
+          landing = landing.replace('</style>', premiumCss + '</style>');
           landing = landing.replace(/href="#faq"/g, 'href="duvidas-frequentes.html"');
           landing = landing.replace(/<a href="#conteudos">Conteúdos<\/a>/, '<a href="#conteudos">Conteúdos</a><a href="#comentarios">Comentários</a>');
           fs.writeFileSync('index.html', landing);
@@ -73,8 +91,11 @@ jobs:
           const builtFaq = fs.readFileSync('duvidas-frequentes.html','utf8');
           if (!builtLanding.includes('id="comentarios"')) throw new Error('Comments section was not generated');
           if (!builtLanding.includes('duvidas-frequentes.html')) throw new Error('Landing does not link to dedicated FAQ');
+          if (!builtLanding.includes('Estamos inaugurando o 9º grupo do MonetizaBOOK.')) throw new Error('Community proof section was not generated');
+          if (/grandes grupos na rede|participação gratuita/.test(builtLanding)) throw new Error('Old superficial metrics are still present');
+          if (builtFaq.includes('Adobe Acrobat')) throw new Error('Obsolete Adobe Acrobat source is still present');
           if ((builtFaq.match(/<details>/g)||[]).length < 100) throw new Error('Dedicated FAQ lost entries');
-          console.log(`Built landing + dedicated FAQ + DEV comments successfully. FAQ entries: ${(builtFaq.match(/<details>/g)||[]).length}`);
+          console.log(`Built landing + dedicated FAQ + refined community proof successfully. FAQ entries: ${(builtFaq.match(/<details>/g)||[]).length}`);
           NODE
 
       - name: Setup Pages
