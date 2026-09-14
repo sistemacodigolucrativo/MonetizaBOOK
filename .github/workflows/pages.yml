@@ -21,56 +21,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Validate source structure
+      - name: Validate standalone HTML Mini App source
         shell: bash
         run: |
           node <<'NODE'
           const fs = require('fs');
-
-          const faqSource = fs.readFileSync('faq-source.html', 'utf8');
-          const home = fs.readFileSync('index.html', 'utf8');
-
-          const requiredFaq = [
-            'id="faq"',
-            'id="gerais"',
-            'id="colaborativas"',
-            'id="colaboradores"',
-            'id="creditos"',
-            'Marcelo R. Souza'
-          ];
-          for (const token of requiredFaq) {
-            if (!faqSource.includes(token)) throw new Error(`FAQ source missing: ${token}`);
-          }
-
-          if (/Adobe Acrobat|Adobe Reader/i.test(faqSource)) {
-            throw new Error('Obsolete Adobe/PDF reader reference remains in FAQ source');
-          }
-
-          const questions = (faqSource.match(/<details>/g) || []).length;
-          if (questions < 100) {
-            throw new Error(`Expected at least 100 FAQ entries, found ${questions}`);
-          }
-
-          const requiredHome = [
-            'href="biblioteca/"',
-            'href="duvidas-frequentes.html"',
-            'id="como-funciona"',
-            'Marcelo R. Souza'
-          ];
-          for (const token of requiredHome) {
-            if (!home.includes(token)) throw new Error(`Home missing: ${token}`);
-          }
-
-          for (const path of [
-            'biblioteca.html',
-            'biblioteca/index.html',
-            'biblioteca/reader.css',
-            'biblioteca/reader.js'
-          ]) {
-            if (!fs.existsSync(path)) throw new Error(`Missing library file: ${path}`);
-          }
-
-          console.log(`Validated home, library and ${questions} FAQ entries.`);
+          const html = fs.readFileSync('index.html', 'utf8');
+          const required = ['id="como-funciona"','id="conteudos"','id="faq"','id="gerais"','id="colaborativas"','id="colaboradores"','id="creditos"','Marcelo R. Souza'];
+          for (const token of required) if (!html.includes(token)) throw new Error(`Missing required HTML content: ${token}`);
+          const questions = (html.match(/<details>/g) || []).length;
+          if (questions < 100) throw new Error(`Expected at least 100 FAQ entries, found ${questions}`);
+          if (/pdf-bootstrap|pdf-data-\d{2}|MONETIZABOOK_PDF_|pdf\.js|<canvas/i.test(html)) throw new Error('Standalone HTML still contains PDF reader dependencies');
+          console.log(`Source validated: ${questions} FAQ entries; no PDF runtime dependency.`);
           NODE
 
   deploy:
@@ -79,102 +41,69 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Build objective home and dedicated FAQ
+      - name: Build institutional landing and dedicated FAQ
         shell: bash
         run: |
           node <<'NODE'
           const fs = require('fs');
-
-          const source = fs.readFileSync('faq-source.html', 'utf8');
+          const source = fs.readFileSync('index.html', 'utf8');
           const style = (source.match(/<style>([\s\S]*?)<\/style>/i) || [,''])[1];
 
           const faqStart = source.search(/<section\b[^>]*\bid=["']faq["'][^>]*>/i);
           const creditsStart = source.search(/<section\b[^>]*\bid=["']creditos["'][^>]*>/i);
+          if (faqStart < 0 || creditsStart < 0 || creditsStart <= faqStart) throw new Error(`FAQ or credits boundary not found: faq=${faqStart}, credits=${creditsStart}`);
 
-          if (faqStart < 0 || creditsStart < 0 || creditsStart <= faqStart) {
-            throw new Error(`FAQ or credits boundary not found: faq=${faqStart}, credits=${creditsStart}`);
-          }
-
-          const faq = source.slice(faqStart, creditsStart);
+          let faq = source.slice(faqStart, creditsStart);
+          faq = faq.replace(/<details>\s*<summary>Adobe Acrobat[\s\S]*?<\/details>/i, '');
 
           const afterCredits = source.slice(creditsStart);
           const creditsMatch = afterCredits.match(/^<section\b[^>]*\bid=["']creditos["'][^>]*>[\s\S]*?<\/section>/i);
           const credits = creditsMatch ? creditsMatch[0] : '';
-
           if (!credits) throw new Error('Credits section could not be extracted');
 
-          const faqPage = `<!doctype html>
-          <html lang="pt-BR">
-          <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-            <meta name="theme-color" content="#07162d">
-            <title>MonetizaBOOK — Dúvidas Frequentes</title>
-            <meta name="description" content="Central de dúvidas do MonetizaBOOK para membros, colaboradores e operação da comunidade.">
-            <style>${style}
-              .faq-intro{background:linear-gradient(145deg,#07162d,#0b2b55);color:#fff;padding:54px 0 42px}
-              .faq-intro h1{font-size:clamp(34px,5vw,54px);line-height:1.05;margin:10px 0 12px}
-              .faq-intro p{color:#d8e7f7;max-width:760px}
-              .faq-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
-              .faq-page #faq{padding-top:48px}
-              @media(max-width:560px){.faq-actions{display:grid}.faq-actions .btn{width:100%}}
-            </style>
-          </head>
-          <body id="top" class="faq-page">
-            <header class="top">
-              <div class="wrap">
-                <div class="brand"><small>CENTRAL DE CONHECIMENTO</small>MONETIZABOOK</div>
-                <nav class="nav">
-                  <a href="index.html">Início</a>
-                  <a href="biblioteca/">Biblioteca</a>
-                  <a class="btn" href="index.html">Voltar</a>
-                </nav>
-              </div>
-            </header>
-            <main>
-              <section class="faq-intro">
-                <div class="wrap">
-                  <span class="eyebrow">CENTRAL DE AJUDA</span>
-                  <h1>Dúvidas Frequentes</h1>
-                  <p>Pesquise dúvidas sobre funcionamento, regras, colaboração, segurança, conteúdo e monetização.</p>
-                  <div class="faq-actions">
-                    <a class="btn" href="biblioteca/">Acessar biblioteca</a>
-                    <a class="btn ghost" href="index.html">Página inicial</a>
-                  </div>
-                </div>
-              </section>
-              ${faq}
-            </main>
-            ${credits}
-            <script>
-              const q=document.getElementById('faqSearch');
-              if(q) q.addEventListener('input',()=>{
-                const t=q.value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-                document.querySelectorAll('#faq details').forEach(d=>{
-                  const s=d.innerText.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-                  d.classList.toggle('hide',t&&!s.includes(t));
-                });
-              });
-            </script>
-          </body>
-          </html>`;
-
+          const faqPage = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#07162d"><title>MonetizaBOOK — Dúvidas Frequentes</title><meta name="description" content="Central completa de Dúvidas Frequentes do MonetizaBOOK: membros, colaboração e operação de colaboradores."><style>${style}.faq-intro{background:linear-gradient(145deg,#07162d,#0b2b55);color:#fff;padding:62px 0 46px}.faq-intro h1{font-size:clamp(34px,5vw,58px);line-height:1.05;margin:10px 0 14px}.faq-intro p{color:#d8e7f7;max-width:760px}.faq-back{display:inline-flex;margin-top:20px;color:#fff;text-decoration:none;font-weight:800}.faq-page #faq{padding-top:52px}</style></head><body id="top" class="faq-page"><header class="top"><div class="wrap"><div class="brand"><small>CENTRAL DE CONHECIMENTO</small>MONETIZABOOK</div><nav class="nav"><a href="index.html">Página inicial</a><a class="btn" href="index.html">Voltar ao site</a></nav></div></header><main><section class="faq-intro"><div class="wrap"><span class="eyebrow">GUIA INTERATIVO</span><h1>Dúvidas Frequentes</h1><p>Central dedicada com 100 perguntas e respostas sobre membros, funcionamento, colaboração e operação de colaboradores.</p><a class="faq-back" href="index.html">← Voltar para a página institucional</a></div></section>${faq}</main>${credits}<script>const q=document.getElementById('faqSearch');if(q)q.addEventListener('input',()=>{const t=q.value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');document.querySelectorAll('#faq details').forEach(d=>{const s=d.innerText.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');d.classList.toggle('hide',t&&!s.includes(t));});});</script></body></html>`;
           fs.writeFileSync('duvidas-frequentes.html', faqPage);
 
-          const builtHome = fs.readFileSync('index.html', 'utf8');
-          const builtFaq = fs.readFileSync('duvidas-frequentes.html', 'utf8');
+          const faqTeaser = `<section id="faq"><div class="wrap"><div class="head"><span class="eyebrow" style="color:var(--blue)">CENTRAL DE AJUDA</span><h2>Dúvidas Frequentes agora têm uma página dedicada.</h2><p>São 100 perguntas e respostas organizadas entre Dúvidas Gerais, Dúvidas Colaborativas e Dúvidas de Colaboradores, com pesquisa instantânea e navegação por categorias.</p></div><div class="cards"><article class="card"><h3>Dúvidas Gerais</h3><p>Funcionamento, regras, conteúdo, crescimento, segurança e monetização.</p></article><article class="card"><h3>Dúvidas Colaborativas</h3><p>Como funciona a colaboração, recrutamento, atividades e limites gerais.</p></article><article class="card"><h3>Dúvidas de Colaboradores</h3><p>Postura, atendimento, moderação, segurança e critérios operacionais.</p></article></div><div style="margin-top:28px"><a class="btn" href="duvidas-frequentes.html">Acessar todas as dúvidas frequentes</a></div></div></section>`;
 
-          if (!builtHome.includes('href="biblioteca/"')) throw new Error('Home does not link to library');
-          if (!builtHome.includes('href="duvidas-frequentes.html"')) throw new Error('Home does not link to FAQ');
-          if ((builtFaq.match(/<details>/g) || []).length < 100) throw new Error('Dedicated FAQ lost entries');
-          if (/Adobe Acrobat|Adobe Reader/i.test(builtFaq)) throw new Error('Obsolete Adobe/PDF reader reference reached built FAQ');
+          const comments = `<section id="comentarios" class="testimonials-section"><div class="wrap"><div class="head"><span class="eyebrow" style="color:var(--blue)">COMUNIDADE</span><h2>Experiências da comunidade</h2><p class="comments-dev-note">Prévia visual da seção de comentários durante o desenvolvimento.</p></div><div class="testimonials-carousel" aria-label="Carrossel de comentários"><button class="carousel-arrow carousel-prev" type="button" aria-label="Comentário anterior">‹</button><div class="testimonials-grid" id="testimonialsTrack" tabindex="0"><article class="testimonial-card"><div class="testimonial-top"><div class="testimonial-person"><span class="testimonial-avatar">AP</span><div><strong>Ana P.</strong><small>Membro da comunidade</small></div></div></div><div class="stars" aria-label="5 de 5 estrelas">★★★★★</div><p>“Eu cheguei sem saber por onde começar no Facebook. O que mais me ajudou foi ter uma sequência mais organizada do que estudar e aplicar primeiro, sem ficar pulando de uma estratégia para outra.”</p></article><article class="testimonial-card"><div class="testimonial-top"><div class="testimonial-person"><span class="testimonial-avatar">CM</span><div><strong>Carlos M.</strong><small>Membro da comunidade</small></div></div></div><div class="stars" aria-label="5 de 5 estrelas">★★★★★</div><p>“Gostei porque as orientações são diretas e não ficam prometendo resultado mágico. A parte de conteúdo original e análise de métricas fez bastante sentido para mim.”</p></article><article class="testimonial-card"><div class="testimonial-top"><div class="testimonial-person"><span class="testimonial-avatar">JR</span><div><strong>Juliana R.</strong><small>Participante</small></div></div></div><div class="stars" aria-label="4 de 5 estrelas">★★★★☆</div><p>“Entrei por curiosidade e achei a comunidade bem mais organizada do que eu esperava. Ainda estou no começo, mas já consegui entender melhor o que preciso corrigir no meu perfil e no meu conteúdo.”</p></article><article class="testimonial-card"><div class="testimonial-top"><div class="testimonial-person"><span class="testimonial-avatar">MA</span><div><strong>Marcos A.</strong><small>Membro da comunidade</small></div></div></div><div class="stars" aria-label="5 de 5 estrelas">★★★★★</div><p>“Eu já publicava no Facebook, mas fazia tudo sem método. Os materiais me ajudaram a prestar mais atenção em retenção, interação e consistência, em vez de olhar só para curtidas.”</p></article><article class="testimonial-card"><div class="testimonial-top"><div class="testimonial-person"><span class="testimonial-avatar">FS</span><div><strong>Fernanda S.</strong><small>Participante</small></div></div></div><div class="stars" aria-label="5 de 5 estrelas">★★★★★</div><p>“O ponto que mais gostei foi a linguagem simples. Dá para acompanhar mesmo sem experiência técnica e, quando surge uma dúvida, o conteúdo já direciona para o assunto certo.”</p></article><article class="testimonial-card"><div class="testimonial-top"><div class="testimonial-person"><span class="testimonial-avatar">RL</span><div><strong>Ricardo L.</strong><small>Membro da comunidade</small></div></div></div><div class="stars" aria-label="4 de 5 estrelas">★★★★☆</div><p>“Para mim, o diferencial foi juntar comunidade, organização e conteúdo no mesmo lugar. Ficou mais fácil separar o que é regra oficial, boa prática e aquilo que ainda precisa ser testado.”</p></article></div><button class="carousel-arrow carousel-next" type="button" aria-label="Próximo comentário">›</button></div><p class="dev-disclosure">Conteúdo demonstrativo de interface nesta versão de desenvolvimento.</p></div></section>`;
 
-          console.log('Built objective home + dedicated FAQ successfully.');
+          const communityProof = `<section class="community-proof"><div class="wrap"><div class="community-proof-card"><div><span class="eyebrow">COMUNIDADE EM EXPANSÃO</span><h2>Estamos inaugurando o 9º grupo do MonetizaBOOK.</h2><p>A rede já reúne mais de oito grandes grupos no Telegram lotados, conectando uma comunidade em crescimento contínuo em torno de conteúdo, engajamento e desenvolvimento no Facebook.</p></div><div class="community-proof-badge"><strong>9º</strong><span>grupo em inauguração</span></div></div></div></section>`;
+
+          let landing = source.slice(0, faqStart) + faqTeaser + comments + source.slice(creditsStart);
+
+          const metricsStart = landing.search(/<div\b[^>]*class=["'][^"']*\bmetrics\b[^"']*["'][^>]*>/i);
+          const howStart = landing.search(/<section\b[^>]*\bid=["']como-funciona["'][^>]*>/i);
+          if (metricsStart < 0 || howStart < 0 || howStart <= metricsStart) throw new Error(`Metrics or how-it-works boundary not found: metrics=${metricsStart}, how=${howStart}`);
+          landing = landing.slice(0, metricsStart) + communityProof + landing.slice(howStart);
+
+          const premiumCss = `.community-proof{padding:0 0 20px;margin-top:-30px;position:relative}.community-proof-card{display:grid;grid-template-columns:1fr auto;gap:32px;align-items:center;background:linear-gradient(135deg,#fff,#f6faff);border:1px solid var(--line);border-radius:26px;padding:30px 34px;box-shadow:var(--shadow)}.community-proof-card h2{margin:7px 0 8px;font-size:clamp(26px,3.5vw,42px);line-height:1.08;letter-spacing:-.03em}.community-proof-card p{margin:0;color:var(--muted);max-width:780px}.community-proof-badge{min-width:170px;text-align:center;padding:22px;border-radius:20px;background:var(--navy);color:#fff}.community-proof-badge strong{display:block;font-size:46px;line-height:1;color:#7ed1ff}.community-proof-badge span{display:block;margin-top:8px;font-size:13px;color:#d8e7f7}.testimonials-section{background:#fff}.comments-dev-note{max-width:760px}.testimonials-carousel{position:relative}.testimonials-grid{display:flex;gap:18px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:none;-ms-overflow-style:none;padding:2px}.testimonials-grid::-webkit-scrollbar{display:none}.testimonial-card{display:flex;flex:0 0 calc((100% - 36px)/3);scroll-snap-align:start;flex-direction:column;gap:14px;background:linear-gradient(180deg,#fff,#f8fbff);border:1px solid var(--line);border-radius:22px;padding:22px;box-shadow:0 14px 34px rgba(7,22,45,.08)}.testimonial-card p{margin:0;color:var(--text);line-height:1.72}.testimonial-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.testimonial-person{display:flex;align-items:center;gap:12px;min-width:0}.testimonial-person div{min-width:0}.testimonial-person strong{display:block;font-size:15px}.testimonial-person small{display:block;margin-top:3px;color:var(--muted);font-size:12px}.testimonial-avatar{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;flex:0 0 42px;background:linear-gradient(135deg,var(--navy),var(--blue));color:#fff;font-size:13px;font-weight:900;letter-spacing:.04em}.stars{font-size:19px;line-height:1;letter-spacing:2px;color:#f2b01e}.dev-disclosure{margin:14px 2px 0;color:var(--muted);font-size:11px}.carousel-arrow{position:absolute;top:50%;z-index:3;width:42px;height:42px;border:1px solid var(--line);border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.94);box-shadow:0 10px 24px rgba(7,22,45,.14);color:var(--navy);font-size:30px;line-height:1;cursor:pointer;transform:translateY(-50%)}.carousel-prev{left:-17px}.carousel-next{right:-17px}.carousel-arrow:hover{background:#fff}.carousel-arrow:focus-visible{outline:3px solid rgba(0,116,217,.25);outline-offset:2px}@media(max-width:940px){.testimonial-card{flex-basis:calc((100% - 18px)/2)}}@media(max-width:700px){.community-proof{margin-top:-18px}.community-proof-card{grid-template-columns:1fr;padding:24px}.community-proof-badge{min-width:0;text-align:left;display:flex;align-items:center;gap:14px}.community-proof-badge strong{font-size:38px}.community-proof-badge span{margin:0}.testimonial-card{flex-basis:100%;padding:20px}.testimonial-top{gap:8px}.carousel-prev{left:-8px}.carousel-next{right:-8px}.carousel-arrow{width:38px;height:38px;font-size:27px}}`;
+          landing = landing.replace('</style>', premiumCss + '</style>');
+          landing = landing.replace(/href="#faq"/g, 'href="duvidas-frequentes.html"');
+          landing = landing.replace(/<a href="#conteudos">Conteúdos<\/a>/, '<a href="#conteudos">Conteúdos</a><a href="#comentarios">Comentários</a>');
+
+          const carouselScript = `<script>(()=>{const track=document.getElementById('testimonialsTrack');if(!track)return;const prev=document.querySelector('.carousel-prev');const next=document.querySelector('.carousel-next');const step=()=>{const card=track.querySelector('.testimonial-card');if(!card)return track.clientWidth;const gap=parseFloat(getComputedStyle(track).gap)||0;return card.getBoundingClientRect().width+gap};const move=d=>track.scrollBy({left:d*step(),behavior:'smooth'});prev&&prev.addEventListener('click',()=>move(-1));next&&next.addEventListener('click',()=>move(1));track.addEventListener('keydown',e=>{if(e.key==='ArrowLeft'){e.preventDefault();move(-1)}if(e.key==='ArrowRight'){e.preventDefault();move(1)}});})();</script>`;
+          landing = landing.replace('</body>', carouselScript + '</body>');
+          fs.writeFileSync('index.html', landing);
+
+          const builtLanding = fs.readFileSync('index.html','utf8');
+          const builtFaq = fs.readFileSync('duvidas-frequentes.html','utf8');
+          if (!builtLanding.includes('id="comentarios"')) throw new Error('Comments section was not generated');
+          if ((builtLanding.match(/class="testimonial-card"/g)||[]).length < 6) throw new Error('Expected six review cards');
+          if ((builtLanding.match(/class="stars"/g)||[]).length < 6) throw new Error('Star ratings were not generated for all comments');
+          if (!builtLanding.includes('id="testimonialsTrack"')) throw new Error('Comment carousel track was not generated');
+          if (/SIMULADO|exemplo simulado|Comentários simulados/.test(builtLanding)) throw new Error('Old simulation labels are still visible');
+          if (!builtLanding.includes('Conteúdo demonstrativo de interface nesta versão de desenvolvimento.')) throw new Error('DEV disclosure is missing');
+          if (!builtLanding.includes('duvidas-frequentes.html')) throw new Error('Landing does not link to dedicated FAQ');
+          if (!builtLanding.includes('Estamos inaugurando o 9º grupo do MonetizaBOOK.')) throw new Error('Community proof section was not generated');
+          if (/grandes grupos na rede|participação gratuita/.test(builtLanding)) throw new Error('Old superficial metrics are still present');
+          if (builtFaq.includes('Adobe Acrobat')) throw new Error('Obsolete Adobe Acrobat source is still present');
+          if ((builtFaq.match(/<details>/g)||[]).length < 100) throw new Error('Dedicated FAQ lost entries');
+          console.log(`Built landing + dedicated FAQ + comment carousel successfully. FAQ entries: ${(builtFaq.match(/<details>/g)||[]).length}`);
           NODE
 
       - name: Setup Pages
@@ -184,6 +113,10 @@ jobs:
         uses: actions/upload-pages-artifact@v4
         with:
           path: '.'
+
+      - name: Wait for branch Pages deployment to settle
+        shell: bash
+        run: sleep 35
 
       - name: Deploy to GitHub Pages
         id: deployment
