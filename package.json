@@ -1,0 +1,14 @@
+{
+  "name": "monetizabook",
+  "version": "1.0.0",
+  "description": "MonetizaBOOK - Central de Conhecimento",
+  "main": "server.js",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js",
+    "build": "echo \"No build step required\""
+  },
+  "dependencies": {
+    "express": "^4.19.0"
+  }
+}
