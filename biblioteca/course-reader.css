@@ -98,6 +98,11 @@ html,body{max-width:100%;overflow-x:hidden}
   .course-readerbar__meta strong{color:#edf3fb}
 }
 @media print{
-  .course-readerbar,.course-finish{display:none !important}
+.course-readerbar,.course-finish{display:none !important}
 }
 .course-readerbar,*{min-width:0}.course-readerbar__meta strong,.course-finish,.course-finish__actions{overflow-wrap:anywhere}
+body{padding-top:0 !important}
+.local-checklist__input{appearance:none;width:1.15em;height:1.15em;margin:0 .55em 0 0;border:1px solid #9aa8bb;border-radius:4px;background:#fff;vertical-align:-.14em;cursor:pointer}
+.local-checklist__input:checked{border-color:#155eef;background:#155eef;box-shadow:inset 0 0 0 3px #fff}
+.checklist li.is-checked{color:#637087;text-decoration:line-through;text-decoration-thickness:1px}
+.local-note{display:block;width:100%;min-height:58px;padding:8px;border:1px solid #cbd5e1;border-radius:7px;background:#fff;color:#162033;font:inherit;resize:vertical}
