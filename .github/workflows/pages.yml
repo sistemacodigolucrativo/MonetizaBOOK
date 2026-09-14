@@ -27,8 +27,8 @@ jobs:
           node <<'NODE'
           const fs = require('fs');
 
-          const faqSource = fs.readFileSync('index.html', 'utf8');
-          const home = fs.readFileSync('home.html', 'utf8');
+          const faqSource = fs.readFileSync('faq-source.html', 'utf8');
+          const home = fs.readFileSync('index.html', 'utf8');
 
           const requiredFaq = [
             'id="faq"',
@@ -86,7 +86,7 @@ jobs:
           node <<'NODE'
           const fs = require('fs');
 
-          const source = fs.readFileSync('index.html', 'utf8');
+          const source = fs.readFileSync('faq-source.html', 'utf8');
           const style = (source.match(/<style>([\s\S]*?)<\/style>/i) || [,''])[1];
 
           const faqStart = source.search(/<section\b[^>]*\bid=["']faq["'][^>]*>/i);
@@ -162,9 +162,6 @@ jobs:
           </html>`;
 
           fs.writeFileSync('duvidas-frequentes.html', faqPage);
-
-          const home = fs.readFileSync('home.html', 'utf8');
-          fs.writeFileSync('index.html', home);
 
           const builtHome = fs.readFileSync('index.html', 'utf8');
           const builtFaq = fs.readFileSync('duvidas-frequentes.html', 'utf8');
