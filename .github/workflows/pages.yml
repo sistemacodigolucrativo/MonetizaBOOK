@@ -42,6 +42,10 @@ jobs:
             if (!faqSource.includes(token)) throw new Error(`FAQ source missing: ${token}`);
           }
 
+          if (/Adobe Acrobat|Adobe Reader/i.test(faqSource)) {
+            throw new Error('Obsolete Adobe/PDF reader reference remains in FAQ source');
+          }
+
           const questions = (faqSource.match(/<details>/g) || []).length;
           if (questions < 100) {
             throw new Error(`Expected at least 100 FAQ entries, found ${questions}`);
@@ -96,8 +100,7 @@ jobs:
             throw new Error(`FAQ or credits boundary not found: faq=${faqStart}, credits=${creditsStart}`);
           }
 
-          let faq = source.slice(faqStart, creditsStart);
-          faq = faq.replace(/<details>\s*<summary>Adobe Acrobat[\s\S]*?<\/details>/i, '');
+          const faq = source.slice(faqStart, creditsStart);
 
           const afterCredits = source.slice(creditsStart);
           const creditsMatch = afterCredits.match(/^<section\b[^>]*\bid=["']creditos["'][^>]*>[\s\S]*?<\/section>/i);
@@ -169,6 +172,7 @@ jobs:
           if (!builtHome.includes('href="biblioteca/"')) throw new Error('Home does not link to library');
           if (!builtHome.includes('href="duvidas-frequentes.html"')) throw new Error('Home does not link to FAQ');
           if ((builtFaq.match(/<details>/g) || []).length < 100) throw new Error('Dedicated FAQ lost entries');
+          if (/Adobe Acrobat|Adobe Reader/i.test(builtFaq)) throw new Error('Obsolete Adobe/PDF reader reference reached built FAQ');
 
           console.log('Built objective home + dedicated FAQ successfully.');
           NODE
