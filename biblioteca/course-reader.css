@@ -2,6 +2,8 @@
   position:sticky;
   top:0;
   z-index:9999;
+  width:100%;
+  max-width:100%;
   min-height:62px;
   display:grid;
   grid-template-columns:auto minmax(0,1fr) auto;
@@ -76,16 +78,19 @@
   font-weight:800;
   text-align:center;
 }
+html,body{max-width:100%;overflow-x:hidden}
+.book,.book *{max-width:100%}
+.book p,.book li,.book td,.book th,.book a{overflow-wrap:anywhere}
 @media(max-width:700px){
-  .course-readerbar{grid-template-columns:auto 1fr;gap:8px}
+  .course-readerbar{grid-template-columns:minmax(0,auto) minmax(0,1fr);gap:8px;padding-left:max(10px,env(safe-area-inset-left));padding-right:max(10px,env(safe-area-inset-right))}
   .course-readerbar__meta{display:none}
   .course-readerbar__complete{justify-self:end;max-width:190px}
   .course-finish{grid-template-columns:1fr;padding:18px}
   .course-finish__actions{min-width:0}
 }
 @media(max-width:390px){
-  .course-readerbar__back{padding:0 10px}
-  .course-readerbar__complete{padding:0 10px;font-size:12px}
+  .course-readerbar__back{padding:0 9px;font-size:12px}
+  .course-readerbar__complete{padding:0 9px;font-size:11px;max-width:150px}
 }
 @media(prefers-color-scheme:dark){
   .course-readerbar{background:rgba(24,34,46,.97);border-color:rgba(255,255,255,.1);color:#edf3fb}
