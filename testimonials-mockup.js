@@ -59,7 +59,7 @@
         <span class="eyebrow" style="color:var(--blue)">EXPERIÊNCIAS EM DESTAQUE</span>
         <h2>Uma trilha que cabe na vida real.</h2>
         <p>Quem se compromete com o processo e aplica o que aprende transforma esforço em resultado.</p>
-        <span class="mockup-disclaimer" data-testimonials-disclaimer>Mockup de desenvolvimento • depoimentos ilustrativos, ainda não são avaliações reais</span>
+        <span class="mockup-disclaimer" data-testimonials-disclaimer>Participe, vitalize e apareça!</span>
       </div>
       <div class="testimonials-carousel" aria-roledescription="carrossel" aria-label="Exemplos ilustrativos de depoimentos">
         <div class="testimonial-viewport">
