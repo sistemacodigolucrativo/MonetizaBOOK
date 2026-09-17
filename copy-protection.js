@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const protectedSelectors = '.book, .library-grid, .next-card, .progress-card, .toolbar';
+  const protectedSelectors = 'body, .book, .library-grid, .next-card, .progress-card, .toolbar';
   const editableSelector = 'input, textarea, select, [contenteditable="true"]';
   const controlSelector = `${editableSelector}, button, a, summary, label`;
 
@@ -12,6 +12,8 @@
   const style = document.createElement('style');
   style.id = 'mb-copy-protection-styles';
   style.textContent = `
+    .mb-copy-protected,
+    .mb-copy-protected *,
     .mb-copy-protected .book,
     .mb-copy-protected .book *,
     .mb-copy-protected .library-grid,
@@ -26,6 +28,10 @@
       user-select: none;
       -webkit-touch-callout: none;
     }
+    .mb-copy-protected input,
+    .mb-copy-protected textarea,
+    .mb-copy-protected select,
+    .mb-copy-protected [contenteditable="true"],
     .mb-copy-protected .book input,
     .mb-copy-protected .book textarea,
     .mb-copy-protected .book select,

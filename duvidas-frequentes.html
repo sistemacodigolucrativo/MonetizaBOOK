@@ -124,5 +124,6 @@ if(q){
   q.addEventListener('input',()=>{const term=q.value.trim().toLocaleLowerCase('pt-BR');document.querySelectorAll('.faq-group details').forEach(d=>{const ok=!term||d.textContent.toLocaleLowerCase('pt-BR').includes(term);d.classList.toggle('hide',!ok);if(term&&ok)d.open=true;else if(!term)d.open=false});document.querySelectorAll('.faq-group').forEach(g=>{if(g.id==='fontes')return;const visible=[...g.querySelectorAll('details')].some(d=>!d.classList.contains('hide'));g.classList.toggle('hide',term&&!visible)})});
 }
 </script>
+<script src="copy-protection.js"></script>
 </body>
 </html>
