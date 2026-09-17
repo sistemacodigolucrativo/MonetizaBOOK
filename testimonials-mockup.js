@@ -152,6 +152,7 @@
     toast.classList.remove('is-visible');
     window.setTimeout(() => { toast.hidden = true; }, 220);
   };
+  toast.addEventListener('click', hideToast);
   closeToast.addEventListener('click', hideToast);
   window.setTimeout(showToast, 4200);
   update();
