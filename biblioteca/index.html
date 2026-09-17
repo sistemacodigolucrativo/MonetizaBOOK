@@ -18,7 +18,7 @@
 </style>
 </head>
 <body>
-<header class="top"><div class="wrap"><a href="../index.html" class="brand"><small>CENTRAL DE CONHECIMENTO</small>MONETIZABOOK</a><nav class="nav"><button class="mobile-menu-btn" onclick="document.querySelector('.nav').classList.toggle('open')">☰</button><div class="nav-links"><a href="../index.html">Início</a><a href="index.html">Biblioteca</a><a href="../duvidas-frequentes.html">Dúvidas</a><a class="btn" href="https://t.me/monetizabook" target="_blank" style="min-height:40px;padding:0 14px;font-size:13px">Participar</a></div></nav></div></header>
+<header class="top"><div class="wrap"><a href="../index.html" class="brand"><small>CENTRAL DE CONHECIMENTO</small>MONETIZABOOK</a><nav class="nav"><button class="mobile-menu-btn" >☰</button><div class="nav-links"><a href="../index.html">Início</a><a href="index.html">Biblioteca</a><a href="../duvidas-frequentes.html">Dúvidas</a><a class="btn" href="https://t.me/monetizabook" target="_blank" style="min-height:40px;padding:0 14px;font-size:13px">Participar</a></div></nav></div></header>
 <section class="hero"><div class="wrap hero-grid"><div><span class="eyebrow">CURSO PROGRESSIVO • 10 VOLUMES</span><h1>Biblioteca MonetizaBOOK</h1><p>Uma trilha organizada do fundamento à escala sustentável. Leia no navegador, acompanhe seu progresso neste dispositivo e avance na ordem recomendada.</p></div><aside class="progress-card"><div class="progress-card__head"><div><span>PROGRESSO DO CURSO</span><strong id="progressPercent">0%</strong></div><span id="progressCount">0 de 10 concluídos</span></div><div class="bar"><span id="progressBar"></span></div><p>O progresso é salvo localmente neste navegador. Não exige conta ou cadastro.</p></aside></div></section>
 <main><div class="wrap"><section class="next-card" id="nextCard"><div><small>Próxima etapa recomendada</small><strong id="nextTitle">Volume 10</strong><p id="nextText">Comece a leitura do volume disponível.</p></div><a class="primary" id="continueBtn" href="volumes/10/index.html">Começar agora</a></section><div class="toolbar"><h2>Trilha de aprendizagem</h2><input class="search" id="searchBooks" type="search" placeholder="Pesquisar um volume…" aria-label="Pesquisar e-books"></div><section class="library-grid" id="libraryGrid">
 <article class="book-card" data-volume="1"><div class="book-card__top"><span class="volume">VOLUME 01</span><span class="status" data-status>Disponível</span></div><h2>Fundação para Crescer no Facebook</h2><p>A base correta antes de buscar alcance, seguidores e receita</p><div class="meta"><span>Iniciante a intermediário</span><span>Etapa 1 de 10</span></div><div class="card-actions"><a class="read-btn" href="volumes/01/index.html">Ler e-book</a></div></article>
@@ -90,5 +90,6 @@ if(search){
 </script>
 <script src="../access-gate.js"></script>
 <script src="../copy-protection.js"></script>
+<script src="../menu-behavior.js"></script>
 </body>
 </html>
