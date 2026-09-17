@@ -22,13 +22,22 @@
   const section = document.querySelector('[data-testimonials-mockup]');
   if (!section) return;
 
+  const disclaimer = section.querySelector('[data-testimonials-disclaimer]');
+  fetch('testimonials-config.txt', { cache: 'no-store' })
+    .then((response) => response.ok ? response.text() : '')
+    .then((value) => {
+      const configuredText = value.trim();
+      if (configuredText && disclaimer) disclaimer.textContent = configuredText;
+    })
+    .catch(() => {});
+
   section.innerHTML = `
     <div class="wrap">
       <div class="head testimonials-head">
         <span class="eyebrow" style="color:var(--blue)">EXPERIÊNCIAS EM DESTAQUE</span>
         <h2>Uma trilha que cabe na vida real.</h2>
-        <p>Exemplos de como a comunidade pode ser percebida por diferentes perfis de criadores.</p>
-        <span class="mockup-disclaimer">Mockup de desenvolvimento • depoimentos ilustrativos, ainda não são avaliações reais</span>
+        <p>Quem se compromete com o processo e aplica o que aprende transforma esforço em resultado.</p>
+        <span class="mockup-disclaimer" data-testimonials-disclaimer>Mockup de desenvolvimento • depoimentos ilustrativos, ainda não são avaliações reais</span>
       </div>
       <div class="testimonials-carousel" aria-roledescription="carrossel" aria-label="Exemplos ilustrativos de depoimentos">
         <div class="testimonial-viewport">
