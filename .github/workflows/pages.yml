@@ -93,9 +93,13 @@ jobs:
             if (!volumeHtml.includes('property="og:image"') || !volumeHtml.includes('name="twitter:card"')) throw new Error(`Volume ${n} social metadata missing`);
           }
           for (const page of [home, faq, library]) {
-            const blocks = [...page.matchAll(/<script type="application\\/ld\\+json">([\\s\\S]*?)<\\/script>/g)];
-            if (blocks.length !== 1) throw new Error('Expected one JSON-LD block on each primary page');
-            JSON.parse(blocks[0][1]);
+            const marker = '<script type="application/ld+json">';
+            const first = page.indexOf(marker);
+            const second = first >= 0 ? page.indexOf(marker, first + marker.length) : -1;
+            if (first < 0 || second >= 0) throw new Error('Expected one JSON-LD block on each primary page');
+            const end = page.indexOf('</script>', first + marker.length);
+            if (end < 0) throw new Error('JSON-LD closing tag missing');
+            JSON.parse(page.slice(first + marker.length, end));
           }
           console.log(`Validated structure, SEO metadata, JSON-LD, sitemap (${sitemapLocations} URLs), FAQ (${questions}) and library (${volumes}).`);
           NODE
