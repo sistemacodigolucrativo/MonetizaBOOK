@@ -85,7 +85,7 @@ jobs:
           if (!library.includes(`rel="canonical" href="${expectedBase}biblioteca/"`)) throw new Error('Library canonical missing or incorrect');
           if (!robots.includes(`Sitemap: ${expectedBase}sitemap.xml`)) throw new Error('robots.txt sitemap declaration missing');
           const sitemapLocations = (sitemap.match(/<loc>/g) || []).length;
-          if (sitemapLocations !== 13) throw new Error(`Expected 13 sitemap URLs, found ${sitemapLocations}`);
+          if (sitemapLocations !== 22) throw new Error(`Expected 22 sitemap URLs, found ${sitemapLocations}`);
           for (let i = 1; i <= 10; i += 1) {
             const n = String(i).padStart(2, '0');
             const volumeHtml = fs.readFileSync(`biblioteca/volumes/${n}/index.html`, 'utf8');
