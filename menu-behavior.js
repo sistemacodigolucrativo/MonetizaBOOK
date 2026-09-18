@@ -3,7 +3,7 @@
   const nav = document.querySelector('.nav');
   const toggle = document.querySelector('.mobile-menu-btn');
   if (!nav || !toggle) return;
-  const close = () => nav.classList.remove('open');
+  const close = () => { nav.classList.remove('open'); toggle.setAttribute('aria-expanded', 'false'); };
   toggle.removeAttribute('onclick');
   toggle.setAttribute('aria-expanded', 'false');
   toggle.addEventListener('click', (event) => {

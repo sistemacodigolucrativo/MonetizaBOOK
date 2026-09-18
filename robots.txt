@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://sistemacodigolucrativo.github.io/MonetizaBOOK/sitemap.xml
