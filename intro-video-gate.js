@@ -26,7 +26,6 @@
     .mb-intro-button[hidden]{display:none}
     .mb-intro-error{max-width:560px;margin:0 auto 16px;padding:14px 16px;border-radius:12px;background:rgba(255,224,224,.12);color:#ffd5d5;font-size:14px;line-height:1.5}
     .mb-intro-error[hidden]{display:none}
-    .mb-intro-skip{display:inline-block;margin-top:12px;color:#b9cce2;font-size:13px;font-weight:700;text-decoration:underline;text-underline-offset:3px}
     @media(max-width:600px){.mb-intro-overlay{align-items:start;padding:16px}.mb-intro-card{margin:auto;padding:24px 16px;border-radius:22px}.mb-intro-player-shell{max-height:60vh;border-radius:14px}.mb-intro-button{width:100%}}
   `;
 
@@ -57,9 +56,8 @@
         <p class="mb-intro-description">Conheça rapidamente a proposta do MonetizaBOOK. Ao concluir o vídeo, o acesso ao conteúdo será liberado.</p>
         <div class="mb-intro-player-shell"><div id="mb-intro-player" aria-label="Vídeo introdutório do MonetizaBOOK"></div></div>
         <p class="mb-intro-status" data-intro-status aria-live="polite">Carregando o vídeo…</p>
-        <p class="mb-intro-error" data-intro-error role="alert" hidden>Não foi possível carregar o vídeo agora. Você pode continuar para o conteúdo e tentar novamente em outra visita.</p>
+        <p class="mb-intro-error" data-intro-error role="alert" hidden>Não foi possível carregar o vídeo agora. A página será liberada automaticamente.</p>
         <button class="mb-intro-button" data-intro-access type="button" hidden>ACESSAR GRATUITAMENTE</button>
-        <button class="mb-intro-skip" data-intro-fallback type="button" hidden>Continuar para o conteúdo</button>
       </section>
     `;
     document.body.appendChild(overlay);
@@ -93,11 +91,10 @@
   const showError = (overlay, message) => {
     const status = overlay.querySelector('[data-intro-status]');
     const error = overlay.querySelector('[data-intro-error]');
-    const fallback = overlay.querySelector('[data-intro-fallback]');
     status.textContent = 'O vídeo não pôde ser carregado.';
     error.textContent = message;
     error.hidden = false;
-    fallback.hidden = false;
+    window.setTimeout(showSite, 1800);
   };
 
   const init = async () => {
@@ -109,19 +106,26 @@
     const overlay = createOverlay();
     const status = overlay.querySelector('[data-intro-status]');
     const accessButton = overlay.querySelector('[data-intro-access]');
-    const fallbackButton = overlay.querySelector('[data-intro-fallback]');
 
     accessButton.addEventListener('click', () => {
       markCompleted();
       showSite();
     });
-    fallbackButton.addEventListener('click', showSite);
 
     try {
       await loadYouTubeApi();
       new window.YT.Player('mb-intro-player', {
         videoId: VIDEO_ID,
-        playerVars: { playsinline: 1, rel: 0, modestbranding: 1 },
+        playerVars: {
+          playsinline: 1,
+          rel: 0,
+          modestbranding: 1,
+          controls: 0,
+          disablekb: 1,
+          fs: 0,
+          iv_load_policy: 3,
+          cc_load_policy: 0
+        },
         events: {
           onReady: () => { status.textContent = 'Reproduza o vídeo até o final para liberar o acesso.'; },
           onStateChange: (event) => {
