@@ -35,7 +35,8 @@ jobs:
             'biblioteca/reader.js',
             'robots.txt',
             'sitemap.xml',
-            'assets/monetizabook-social-1200x630.jpg'
+            'assets/monetizabook-social-1200x630.jpg',
+            'assets/monetizabook-social-share.jpg'
           ];
 
           for (const file of requiredFiles) {
@@ -57,6 +58,7 @@ jobs:
             'rel="canonical" href="https://sistemacodigolucrativo.github.io/MonetizaBOOK/"',
             'property="og:title"',
             'property="og:image"',
+            'assets/monetizabook-social-share.jpg',
             'name="twitter:card"',
             'application/ld+json'
           ];
